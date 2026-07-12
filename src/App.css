@@ -128,11 +128,12 @@ body {
   transform: translateY(-4px);
 }
 
-.news-card-image img {
+/* Update your news/gallery card image styles in src/App.css */
+.news-card img, .admin-item-row img, .card-image {
   width: 100%;
-  height: 220px;
-  object-fit: cover;
-  display: block;
+  height: 200px;        
+  object-fit: cover;          
+  object-position: center 20%; 
 }
 
 .news-card-body {
