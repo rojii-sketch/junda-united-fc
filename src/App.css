@@ -26,6 +26,31 @@ body {
   padding: 1rem 2rem;
   color: white;
 }
+/* Update or add these in src/App.css */
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem; /* Puts a clean space between the logo and text */
+}
+
+.club-logo-img {
+  height: 45px; /* Keeps the navbar size uniform and professional */
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.15)); /* Adds a slight crisp lift */
+}
+
+@media (max-width: 600px) {
+  /* Aligns everything vertically on phone screens */
+  .nav-logo {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .club-logo-img {
+    height: 60px; /* Slightly larger when stacked alone on mobile */
+  }
+}
 
 .nav-logo h1 {
   margin: 0;
