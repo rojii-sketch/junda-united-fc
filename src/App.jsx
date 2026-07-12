@@ -2,11 +2,13 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import ArticleDetail from './pages/ArticleDetail';
 import News from './pages/News';
 import Gallery from './pages/Gallery';
 import Squad from './pages/Squad';
 import Admin from './pages/Admin';
 import './App.css';
+import Players from './pages/Squad';
 
 // Import our initial mock collections
 import { initialNews, initialPlayers, initialGallery } from './data/initialData';
@@ -43,27 +45,19 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <Navbar />
-      <main className="main-content">
-        <Routes>
-          {/* 3. Pass data down to public pages as props */}
-          <Route path="/" element={<News news={news} />} />
-          <Route path="/gallery" element={<Gallery gallery={gallery} />} />
-          <Route path="/squad" element={<Squad players={players} />} />
-          
-          {/* Pass data AND setters to the Admin panel so it can update them */}
-          <Route 
-            path="/admin" 
-            element={
-              <Admin 
-                news={news} setNews={setNews}
-                players={players} setPlayers={setPlayers}
-                gallery={gallery} setGallery={setGallery}
-              />
-            } 
-          />
-        </Routes>
-      </main>
+      {/* Your Navbar stays visible on every single page layout */}
+      <Navbar /> 
+
+      {/* The Routes container controls which component renders based on the URL */}
+      <Routes>
+        <Route path="/" element={<News news={news} />} />
+        <Route path="/gallery" element={<Gallery gallery={gallery} />} />
+        <Route path="/squad" element={<Players players={players} />} />
+        <Route path="/admin" element={<Admin news={news} setNews={setNews} players={players} setPlayers={setPlayers} gallery={gallery} setGallery={setGallery} />} />
+        
+        {/* DYNAMIC ROUTE FOR DETAILED ARTICLES */}
+        <Route path="/news/:id" element={<ArticleDetail news={news} />} />
+      </Routes>
     </BrowserRouter>
   );
 }
