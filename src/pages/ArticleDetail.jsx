@@ -32,16 +32,32 @@ export default function ArticleDetail({ news }) {
         <h1 style={{ fontSize: '2.5rem', margin: '0.5rem 0 1.5rem 0', color: '#1a202c', lineHeight: '1.2' }}>
           {article.title}
         </h1>
-        
         {article.imageUrl && (
-          <div className="full-article-image-wrapper" style={{ marginBottom: '2rem', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-            <img 
-              src={article.imageUrl} 
-              alt={article.title} 
-              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }} 
-            />
-          </div>
-        )}
+  <div 
+    className="full-article-image-wrapper" 
+    style={{ 
+      maxWidth: '500px',          /* 👈 Caps the width so it doesn't take over the screen */
+      margin: '0 auto 2rem auto', /* Centers the image card horizontally */
+      borderRadius: '12px', 
+      overflow: 'hidden', 
+      boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+      border: '1px solid #e2e8f0',
+      background: '#f7fafc'
+    }}
+  >
+    <img 
+      src={article.imageUrl} 
+      alt={article.title} 
+      style={{ 
+        width: '100%', 
+        height: '350px',          /* 👈 Gives it a structured card height */
+        display: 'block', 
+        objectFit: 'contain',     /* 👈 Keeps the entire photo uncropped and fully visible */
+        padding: '0.5rem'         /* Adds a clean border gap inside the card wrapper */
+      }} 
+    />
+  </div>
+)}
         
         <div className="full-article-content" style={{ fontSize: '1.15rem', lineHeight: '1.8', color: '#2d3748', whiteSpace: 'pre-wrap' }}>
           {article.content}
