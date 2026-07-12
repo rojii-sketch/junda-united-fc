@@ -1,16 +1,27 @@
-# React + Vite
+# Junda United FC - Official Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A responsive, lightweight football club management system designed to showcase club news, match media, and team rosters, with a secure, password-protected administrative dashboard for real-time updates.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+*   **Dynamic News Feed:** Users can view the latest club updates, sortable by date.
+*   **Media Gallery:** Supports both image and video content with a responsive grid layout.
+*   **Team Roster:** Categorized display for Players, Coaching Staff, and Medical Support.
+*   **Secure Admin Panel:** A hidden, password-protected control panel (`/admin`) for club officials to Create, Update, and Delete content.
+*   **Mobile-First Design:** Fully responsive layout optimized for smartphones, tablets, and desktops.
+*   **Persistence:** Built-in `localStorage` synchronization so data persists across browser refreshes without the need for a server-side database.
 
-## React Compiler
+## 🛠 Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+*   **Frontend:** React (Vite)
+*   **Routing:** React Router DOM
+*   **Styling:** Custom CSS (Flexbox & CSS Grid)
+*   **Storage:** Browser `localStorage` (Client-side persistence)
+*   **Deployment:** Vercel
 
-## Expanding the ESLint configuration
+## 📦 Setup & Installation
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. **Clone the repository:**
+   ```bash
+   git clone [https://github.com/rojii-sketch/junda-united-fc.git](https://github.com/rojii-sketch/junda-united-fc.git)
+   cd junda-united-fc
