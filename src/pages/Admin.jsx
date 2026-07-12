@@ -2,14 +2,19 @@
 import { useState } from 'react';
 
 export default function Admin({ news, setNews, players, setPlayers, gallery, setGallery }) {
-  // --- Admin Navigation Tabs ---
+  // 1. ALL STATES DEFINED AT THE VERY TOP
   const [activeTab, setActiveTab] = useState('news');
-
-  // --- Authentication Security Layer ---
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // Created securely here
+
+  const [newsForm, setNewsForm] = useState({ title: '', content: '', imageUrl: '' });
+  const [playerForm, setPlayerForm] = useState({ name: '', position: '', jerseyNumber: '', role: 'player', image: '' });
+  const [galleryForm, setGalleryForm] = useState({ type: 'image', url: '', caption: '' });
+
   const SECRET_ADMIN_PASSWORD = "junda_united_2026"; 
 
+  // 2. ACTION HANDLERS
   const handleLogin = (e) => {
     e.preventDefault();
     if (passwordInput === SECRET_ADMIN_PASSWORD) {
@@ -20,12 +25,6 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
     }
   };
 
-  // --- Form Input States ---
-  const [newsForm, setNewsForm] = useState({ title: '', content: '', imageUrl: '' });
-  const [playerForm, setPlayerForm] = useState({ name: '', position: '', jerseyNumber: '', role: 'player', image: '' });
-  const [galleryForm, setGalleryForm] = useState({ type: 'image', url: '', caption: '' });
-
-  // --- Create Action Handlers ---
   const handleAddNews = (e) => {
     e.preventDefault();
     if (!newsForm.title || !newsForm.content) return alert('Title and Content are required!');
@@ -66,7 +65,6 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
     setGalleryForm({ type: 'image', url: '', caption: '' });
   };
 
-  // --- Delete Action Handlers ---
   const deleteItem = (id, type) => {
     if (!window.confirm('Are you sure you want to delete this item?')) return;
     
@@ -75,7 +73,7 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
     if (type === 'gallery') setGallery(gallery.filter(item => item.id !== id));
   };
 
-  // 🛡️ SECURITY CHECK: Renders ONLY the login gate if not unlocked yet
+  // 3. SECURITY GATE CHECK (Safely reads states created above)
   if (!isAuthenticated) {
     return (
       <div className="page-container" style={{ maxWidth: '400px', marginTop: '5rem' }}>
@@ -83,13 +81,22 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
           <h3>Junda UI Secure Gateway</h3>
           <div className="form-group">
             <label htmlFor="admin-pass">Enter Security Code</label>
-            <input 
-              id="admin-pass" 
-              type="password" 
-              placeholder="••••••••" 
-              value={passwordInput} 
-              onChange={e => setPasswordInput(e.target.value)} 
-            />
+            <div className="password-input-wrapper">
+              <input 
+                id="admin-pass" 
+                type={showPassword ? "text" : "password"} 
+                placeholder="••••••••" 
+                value={passwordInput} 
+                onChange={e => setPasswordInput(e.target.value)} 
+              />
+              <button 
+                type="button" 
+                className="toggle-password-btn"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </div>
           <button type="submit" className="submit-btn">Unlock Dashboard</button>
         </form>
@@ -97,7 +104,7 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
     );
   }
 
-  // 🎛️ FULL CONTROL PANEL: Only loads when isAuthenticated is true
+  // 4. MAIN ADMINISTRATIVE CONTROL PANEL
   return (
     <div className="page-container">
       <header className="page-header">

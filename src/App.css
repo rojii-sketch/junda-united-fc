@@ -462,3 +462,36 @@ body {
     text-align: center;
   }
 }
+/* Password Field Wrapper Alignment */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+/* Force the text input to leave padding on the right for the text button */
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 3.5rem !important; 
+}
+
+/* Position the text button cleanly over the input track box */
+.toggle-password-btn {
+  position: absolute;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: #718096;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.toggle-password-btn:hover {
+  color: var(--primary-color); /* Matches Junda United Red on hover */
+}
