@@ -20,8 +20,8 @@ export default function News({ news }) {
 
       <div className="news-grid">
         {news.map((item) => (
-          /* 👇 THE WHOLE CARD IS NOW A HOVERABLE LINK */
-          <Link to={`/news/${item.id}`} key={item.id} className="news-card-link" style={{ textDecoration: 'none', color: 'inherit' }}>
+          /* 🎯 FIX: Changed item.id to item._id to match MongoDB generated object IDs */
+          <Link to={`/news/${item._id}`} key={item._id} className="news-card-link" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="news-card">
               {item.imageUrl && (
                 <div className="news-card-img-container">

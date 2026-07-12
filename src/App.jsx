@@ -5,43 +5,51 @@ import Navbar from './components/Navbar';
 import ArticleDetail from './pages/ArticleDetail';
 import News from './pages/News';
 import Gallery from './pages/Gallery';
-import Squad from './pages/Squad';
 import Admin from './pages/Admin';
 import './App.css';
 import Players from './pages/Squad';
-
-// Import our initial mock collections
-import { initialNews, initialPlayers, initialGallery } from './data/initialData';
-
+const API_BASE = import.meta.env.PROD 
+  ? "https://junda-united-backend.onrender.com/api" // Your future live Render URL
+  : "http://localhost:5000/api";                    // Your local testing URL
 export default function App() {
-  // 1. Initialize State (Checks localStorage first; falls back to initialData)
-  const [news, setNews] = useState(() => {
-    const saved = localStorage.getItem('fc_news');
-    return saved ? JSON.parse(saved) : initialNews;
-  });
+  // 1. Initialize State with empty arrays (Waiting for Cloud Data)
+  const [news, setNews] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const [gallery, setGallery] = useState([]);
 
-  const [players, setPlayers] = useState(() => {
-    const saved = localStorage.getItem('fc_players');
-    return saved ? JSON.parse(saved) : initialPlayers;
-  });
+  const API_BASE = "http://localhost:5000/api";
 
-  const [gallery, setGallery] = useState(() => {
-    const saved = localStorage.getItem('fc_gallery');
-    return saved ? JSON.parse(saved) : initialGallery;
-  });
-
-  // 2. Sync with LocalStorage whenever state arrays change
+  // 2. Fetch all collections from MongoDB Atlas when the website mounts
   useEffect(() => {
-    localStorage.setItem('fc_news', JSON.stringify(news));
-  }, [news]);
+    const fetchAllData = async () => {
+      try {
+        // Fetch News Articles
+        const newsRes = await fetch(`${API_BASE}/news`);
+        if (newsRes.ok) {
+          const newsData = await newsRes.json();
+          setNews(newsData);
+        }
 
-  useEffect(() => {
-    localStorage.setItem('fc_players', JSON.stringify(players));
-  }, [players]);
+        // Fetch Players/Squad
+        const playersRes = await fetch(`${API_BASE}/players`);
+        if (playersRes.ok) {
+          const playersData = await playersRes.json();
+          setPlayers(playersData);
+        }
 
-  useEffect(() => {
-    localStorage.setItem('fc_gallery', JSON.stringify(gallery));
-  }, [gallery]);
+        // Fetch Gallery Assets
+        const galleryRes = await fetch(`${API_BASE}/gallery`);
+        if (galleryRes.ok) {
+          const galleryData = await galleryRes.json();
+          setGallery(galleryData);
+        }
+      } catch (error) {
+        console.error("❌ Error retrieving records from cloud database:", error);
+      }
+    };
+
+    fetchAllData();
+  }, []);
 
   return (
     <BrowserRouter>
@@ -53,7 +61,22 @@ export default function App() {
         <Route path="/" element={<News news={news} />} />
         <Route path="/gallery" element={<Gallery gallery={gallery} />} />
         <Route path="/squad" element={<Players players={players} />} />
-        <Route path="/admin" element={<Admin news={news} setNews={setNews} players={players} setPlayers={setPlayers} gallery={gallery} setGallery={setGallery} />} />
+        
+        {/* Pass API_BASE down to Admin so its forms can send POST and DELETE network requests */}
+        <Route 
+          path="/admin" 
+          element={
+            <Admin 
+              news={news} 
+              setNews={setNews} 
+              players={players} 
+              setPlayers={setPlayers} 
+              gallery={gallery} 
+              setGallery={setGallery} 
+              API_BASE={API_BASE}
+            />
+          } 
+        />
         
         {/* DYNAMIC ROUTE FOR DETAILED ARTICLES */}
         <Route path="/news/:id" element={<ArticleDetail news={news} />} />
