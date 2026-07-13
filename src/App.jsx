@@ -10,6 +10,7 @@ import Gallery from './pages/Gallery';
 import Admin from './pages/Admin';
 import './App.css';
 import Players from './pages/Squad';
+import FixturesPage from './pages/FixturesPage'; // 🎯 We'll create this public page next!
 
 const API_BASE = import.meta.env.PROD 
   ? "https://junda-united-fc.onrender.com/api" 
@@ -18,6 +19,7 @@ const API_BASE = import.meta.env.PROD
 export default function App() {
   // 1. Initialize State with empty arrays (Waiting for Cloud Data)
   const [news, setNews] = useState([]);
+  const [fixtures, setFixtures] = useState([]); // ✓ State declared perfectly
   const [players, setPlayers] = useState([]);
   const [gallery, setGallery] = useState([]);
 
@@ -30,6 +32,13 @@ export default function App() {
         if (newsRes.ok) {
           const newsData = await newsRes.json();
           setNews(newsData);
+        }
+
+        // 🎯 FIX 1: Fetch Fixtures data from cloud database
+        const fixturesRes = await fetch(`${API_BASE}/fixtures`);
+        if (fixturesRes.ok) {
+          const fixturesData = await fixturesRes.json();
+          setFixtures(fixturesData);
         }
 
         // Fetch Players/Squad
@@ -58,12 +67,15 @@ export default function App() {
       {/* Top Header Strip */}
       <Navbar /> 
 
-      {/* 🎯 FIX: Exactly ONE router configuration block maps layout frames */}
       <Routes>
         <Route path="/" element={<News news={news} />} />
         <Route path="/gallery" element={<Gallery gallery={gallery} />} />
         <Route path="/squad" element={<Players players={players} />} />
         
+        {/* 🎯 FIX 2: Public Route to view the fixture lineup */}
+        <Route path="/fixtures" element={<FixturesPage fixtures={fixtures} />} />
+        
+        {/* 🎯 FIX 3: Pass fixture hooks to Admin so forms can trigger updates */}
         <Route 
           path="/admin" 
           element={
@@ -73,7 +85,9 @@ export default function App() {
               players={players} 
               setPlayers={setPlayers} 
               gallery={gallery} 
-              setGallery={setGallery} 
+              setGallery={setGallery}
+              fixtures={fixtures}
+              setFixtures={setFixtures} 
               API_BASE={API_BASE}
             />
           } 
