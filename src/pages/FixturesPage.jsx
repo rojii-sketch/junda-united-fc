@@ -1,5 +1,6 @@
 // src/pages/FixturesPage.jsx
 import React from 'react';
+import StandingsTable from '../components/StandingsTable';
 
 export default function FixturesPage({ fixtures }) {
   // Separate matches dynamically into Upcoming and Completed sections
@@ -59,7 +60,7 @@ export default function FixturesPage({ fixtures }) {
       </section>
 
       {/* 🏆 SECTION 2: RECENT RESULTS */}
-      <section>
+      <section style={{ marginBottom: '4rem' }}>
         <h2 style={{ fontSize: '1.6rem', color: '#1e293b', borderLeft: '5px solid #10b981', paddingLeft: '0.75rem', marginBottom: '1.5rem', letterSpacing: '0.03em' }}>
           Latest Results
         </h2>
@@ -112,6 +113,14 @@ export default function FixturesPage({ fixtures }) {
             })}
           </div>
         )}
+      </section>
+
+      {/* 🎯 SECTION 3: LEAGUE STANDINGS TABLE */}
+      <section style={{ marginTop: '4rem' }}>
+        <h2 style={{ fontSize: '1.6rem', color: '#1e293b', borderLeft: '5px solid #1e3a8a', paddingLeft: '0.75rem', marginBottom: '1.5rem', letterSpacing: '0.03em' }}>
+          League Standings
+        </h2>
+        <StandingsTable />
       </section>
 
     </div>
