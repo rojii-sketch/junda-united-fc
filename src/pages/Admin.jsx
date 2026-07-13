@@ -1,7 +1,8 @@
 // src/pages/Admin.jsx
 import { useState } from 'react';
 
-export default function Admin({ news, setNews, players, setPlayers, gallery, setGallery, API_BASE }) {
+// 🎯 FIX 1: Added fixtures and setFixtures to the destructured props parameters
+export default function Admin({ news, setNews, players, setPlayers, gallery, setGallery, fixtures, setFixtures, API_BASE }) {
   const [activeTab, setActiveTab] = useState('news');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
@@ -12,6 +13,18 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
   const [newsForm, setNewsForm] = useState({ title: '', content: '', imageUrl: '', date: '' });
   const [playerForm, setPlayerForm] = useState({ name: '', position: '', jerseyNumber: '', role: 'player', image: '' });
   const [galleryForm, setGalleryForm] = useState({ type: 'image', url: '', caption: '' });
+
+  // 🎯 FIX 2: State management hooks for incoming Fixture details
+  const [fixtureForm, setFixtureForm] = useState({
+    opponent: '',
+    matchDate: '',
+    kickoffTime: '16:00 EAT',
+    venue: 'Junda Grounds, Mishomoroni',
+    status: 'Upcoming',
+    jundaScore: 0,
+    opponentScore: 0,
+    isHomeMatch: true
+  });
 
   // Uploading state loaders
   const [isUploading, setIsUploading] = useState(false);
@@ -34,7 +47,6 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
 
       const data = await response.json();
       if (response.ok && data.success) {
-        // Direct target sync depending on active workflow form
         if (formType === 'news') setNewsForm({ ...newsForm, imageUrl: data.url });
         if (formType === 'squad') setPlayerForm({ ...playerForm, image: data.url });
         if (formType === 'gallery') setGalleryForm({ ...galleryForm, url: data.url });
@@ -193,6 +205,45 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
     }
   };
 
+  // 🎯 FIX 3: Add Fixture processing form event handler
+  const handleAddFixture = async (e) => {
+    e.preventDefault();
+    if (!fixtureForm.opponent || !fixtureForm.matchDate) return alert('Opponent Name and Match Date are required!');
+
+    const submissionPayload = {
+      ...fixtureForm,
+      jundaScore: fixtureForm.status === 'Completed' ? Number(fixtureForm.jundaScore) : 0,
+      opponentScore: fixtureForm.status === 'Completed' ? Number(fixtureForm.opponentScore) : 0,
+    };
+
+    try {
+      const response = await fetch(`${API_BASE}/fixtures`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(submissionPayload)
+      });
+
+      if (response.ok) {
+        const savedFixture = await response.json();
+        setFixtures([savedFixture, ...fixtures]);
+        setFixtureForm({
+          opponent: '',
+          matchDate: '',
+          kickoffTime: '16:00 EAT',
+          venue: 'Junda Grounds, Mishomoroni',
+          status: 'Upcoming',
+          jundaScore: 0,
+          opponentScore: 0,
+          isHomeMatch: true
+        });
+        alert('🏅 Match context logged successfully!');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to record fixture details.');
+    }
+  };
+
   // --- MERN DELETE Handler ---
   const deleteItem = async (id, type) => {
     if (!window.confirm('Are you sure you want to delete this item permanently?')) return;
@@ -209,6 +260,7 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
         }
         if (type === 'players') setPlayers(players.filter(item => item._id !== id));
         if (type === 'gallery') setGallery(gallery.filter(item => item._id !== id));
+        if (type === 'fixtures') setFixtures(fixtures.filter(item => item._id !== id)); // 🎯 Target fixture array map
         alert('Item dropped successfully from database records.');
       }
     } catch (err) {
@@ -263,8 +315,10 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
         <p>Create, update and remove club assets in real-time.</p>
       </header>
 
+      {/* 🎯 FIX 4: Integrated navigation tab trigger button for Fixtures */}
       <div className="admin-tabs">
         <button className={activeTab === 'news' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('news')}>Manage News</button>
+        <button className={activeTab === 'fixtures' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('fixtures')}>Manage Fixtures</button>
         <button className={activeTab === 'squad' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('squad')}>Manage Squad</button>
         <button className={activeTab === 'gallery' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('gallery')}>Manage Gallery</button>
       </div>
@@ -286,7 +340,6 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
               <input id="news-title" type="text" placeholder="e.g. Match Victory!" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} />
             </div>
 
-            {/* 📸 FILE UPLOAD INSTEAD OF STRIP STRING */}
             <div className="form-group">
               <label htmlFor="news-file">Cover Image Upload</label>
               <input id="news-file" type="file" accept="image/*" onChange={e => handleFileUpload(e, 'news')} />
@@ -331,6 +384,82 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
         </div>
       )}
 
+      {/* 🎯 FIX 5: RENDER THE NEW FIXTURES MANAGEMENT PANEL LAYOUT PANEL */}
+      {activeTab === 'fixtures' && (
+        <div className="admin-panel">
+          <form onSubmit={handleAddFixture} className="admin-form">
+            <h3>Log New Match Fixture</h3>
+            
+            <div className="form-group">
+              <label htmlFor="fix-opponent">Opponent Team Name</label>
+              <input id="fix-opponent" type="text" placeholder="e.g. Black Dragon FC" value={fixtureForm.opponent} onChange={e => setFixtureForm({...fixtureForm, opponent: e.target.value})} />
+            </div>
+
+            <div className="form-group" style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fix-date">Match Date</label>
+                <input id="fix-date" type="text" placeholder="e.g. 18/07/2026" value={fixtureForm.matchDate} onChange={e => setFixtureForm({...fixtureForm, matchDate: e.target.value})} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label htmlFor="fix-time">Kickoff Time</label>
+                <input id="fix-time" type="text" value={fixtureForm.kickoffTime} onChange={e => setFixtureForm({...fixtureForm, kickoffTime: e.target.value})} />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="fix-venue">Stadium Venue</label>
+              <input id="fix-venue" type="text" value={fixtureForm.venue} onChange={e => setFixtureForm({...fixtureForm, venue: e.target.value})} />
+            </div>
+
+            <div className="form-group" style={{ background: 'var(--card-bg, #f8fafc)', padding: '0.5rem', borderRadius: '6px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}>
+                <input type="checkbox" checked={fixtureForm.isHomeMatch} onChange={e => setFixtureForm({...fixtureForm, isHomeMatch: e.target.checked})} />
+                🏠 This is a HOME match for Junda United
+              </label>
+            </div>
+
+            <div className="form-group" style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+              <label htmlFor="fix-status">Match Progress Status</label>
+              <select id="fix-status" value={fixtureForm.status} onChange={e => setFixtureForm({...fixtureForm, status: e.target.value})}>
+                <option value="Upcoming">🗓️ Upcoming Match</option>
+                <option value="Completed">🏆 Completed (Log Scoreboard)</option>
+              </select>
+            </div>
+
+            {fixtureForm.status === 'Completed' && (
+              <div className="form-group" style={{ display: 'flex', gap: '1rem', background: '#f0fdf4', padding: '1rem', borderRadius: '8px' }}>
+                <div>
+                  <label style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Junda Score</label>
+                  <input type="number" min="0" value={fixtureForm.jundaScore} onChange={e => setFixtureForm({...fixtureForm, jundaScore: e.target.value})} style={{ width: '70px', padding: '0.4rem' }} />
+                </div>
+                <div style={{ fontWeight: 'bold', alignSelf: 'center', marginTop: '1rem' }}>VS</div>
+                <div>
+                  <label style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Opponent Score</label>
+                  <input type="number" min="0" value={fixtureForm.opponentScore} onChange={e => setFixtureForm({...fixtureForm, opponentScore: e.target.value})} style={{ width: '70px', padding: '0.4rem' }} />
+                </div>
+              </div>
+            )}
+
+            <button type="submit" className="submit-btn">Save Match Entry</button>
+          </form>
+
+          <div className="item-list">
+            <h3>Active Match Logs ({fixtures?.length || 0})</h3>
+            {(fixtures || []).map(item => (
+              <div key={item._id} className="admin-item-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <strong>Junda United vs {item.opponent}</strong>
+                  <p className="subtext">
+                    {item.matchDate} • {item.status === 'Completed' ? `Score: ${item.jundaScore}-${item.opponentScore} (Done)` : 'Upcoming'}
+                  </p>
+                </div>
+                <button type="button" className="delete-btn" onClick={() => deleteItem(item._id, 'fixtures')}>Delete</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* --- SQUAD SECTION --- */}
       {activeTab === 'squad' && (
         <div className="admin-panel">
@@ -349,7 +478,6 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
               <input id="squad-jersey" type="text" placeholder="Leave blank if staff" value={playerForm.jerseyNumber} onChange={e => setPlayerForm({...playerForm, jerseyNumber: e.target.value})} />
             </div>
 
-            {/* 📸 FILE UPLOAD FOR SQUAD */}
             <div className="form-group">
               <label htmlFor="squad-file">Profile Photo Upload</label>
               <input id="squad-file" type="file" accept="image/*" onChange={e => handleFileUpload(e, 'squad')} />
@@ -388,7 +516,6 @@ export default function Admin({ news, setNews, players, setPlayers, gallery, set
           <form onSubmit={handleAddGallery} className="admin-form">
             <h3>Upload Media Item</h3>
             
-            {/* 📸 FILE UPLOAD FOR GALLERY */}
             <div className="form-group">
               <label htmlFor="gallery-file">Select Media File</label>
               <input id="gallery-file" type="file" accept="image/*" onChange={e => handleFileUpload(e, 'gallery')} />
