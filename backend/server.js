@@ -161,13 +161,17 @@ app.get('/api/standings', async (req, res) => {
 app.post('/api/standings', async (req, res) => {
   try {
     // Check if team already exists to update it, or create a new entry
-    const query = { name: req.body.name };
-    const update = req.body;
-    const options = { upsert: true, new: true, setDefaultsOnInsert: true };
+   const options = { 
+      upsert: true, 
+      new: true, 
+      setDefaultsOnInsert: true,
+      runValidators: true 
+    };
 
     const savedTeam = await Standing.findOneAndUpdate(query, update, options);
     res.status(201).json(savedTeam);
   } catch (err) {
+    console.error("Database validation error:", err.message);
     res.status(400).json({ error: err.message });
   }
 });
