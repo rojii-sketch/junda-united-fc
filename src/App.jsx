@@ -9,8 +9,8 @@ import Admin from './pages/Admin';
 import './App.css';
 import Players from './pages/Squad';
 const API_BASE = import.meta.env.PROD 
-  ? "https://junda-united-fc.onrender.com/api" // Your future live Render URL
-  : "http://localhost:5000/api";                    // Your local testing URL
+  ? "https://junda-united-fc.onrender.com/api" 
+  : "http://localhost:5000/api";
 export default function App() {
   // 1. Initialize State with empty arrays (Waiting for Cloud Data)
   const [news, setNews] = useState([]);
