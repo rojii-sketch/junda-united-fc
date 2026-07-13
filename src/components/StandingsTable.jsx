@@ -108,9 +108,6 @@ export default function StandingsTable({ standings = [] }) {
         </tbody>
       </table>
       
-      <div style={{ marginTop: '1rem', background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', fontSize: '0.8rem', color: '#64748b', lineHeight: '1.4' }}>
-        ⚠️ **Notice:** **Mombasa Kings FC** has been officially removed from the league directory index following corporate regulatory disqualification by the FKF disciplinary council. All records, goal metrics, and previous head-to-head allocations involving the club have been expunged from the standing matrices.
-      </div>
     </div>
   );
 }
