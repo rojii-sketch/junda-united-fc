@@ -2,6 +2,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
 import express from 'express';
 import mongoose from 'mongoose';
+import Fixture from './models/Fixture.js'
 import cors from 'cors';
 import dotenv from 'dotenv';
 import Admin from './models/Admin.js';
@@ -112,7 +113,37 @@ app.post('/api/gallery', async (req, res) => {
 app.delete('/api/gallery/:id', async (req, res) => {
   try { await Gallery.findByIdAndDelete(req.params.id); res.json({ message: 'Asset removed' }); } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// ==========================================================
+// 🗓️ FIXTURES & MATCH HUB ENDPOINTS
+// ==========================================================
+app.get('/api/fixtures', async (req, res) => {
+  try {
+    // Sort by date or creation order
+    const matches = await Fixture.find().sort({ createdAt: -1 });
+    res.json(matches);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
+app.post('/api/fixtures', async (req, res) => {
+  try {
+    const newMatch = new Fixture(req.body);
+    const savedMatch = await newMatch.save();
+    res.status(201).json(savedMatch);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/fixtures/:id', async (req, res) => {
+  try {
+    await Fixture.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Fixture entry removed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 // ==========================================================
 // 🔐 5. SECURE ADMIN LOGIN ENDPOINT
 // ==========================================================
