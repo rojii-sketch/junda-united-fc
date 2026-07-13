@@ -1,6 +1,7 @@
 // src/App.jsx
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import Navbar from './components/Navbar';
 import ArticleDetail from './pages/ArticleDetail';
 import News from './pages/News';
@@ -83,6 +84,7 @@ export default function App() {
 
       {/* Bottom Brand Anchor */}
       <Footer />
+      <Analytics />
     </BrowserRouter>
   );
 }
