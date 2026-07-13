@@ -33,7 +33,7 @@ export default function ArticleDetail({ news }) {
           {article.title}
         </h1>
         
-        {article.image && (
+        {article.imageUrl && (
           <div 
             className="full-article-image-wrapper" 
             style={{ 
