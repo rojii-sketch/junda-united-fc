@@ -253,23 +253,27 @@ export default function Admin({
       alert('Failed to record fixture details.');
     }
   };
-
-  // 🎯 New backend pipeline network submission for Standings Table
+// 🎯 New backend pipeline network submission for Standings Table
   const handleStandingSubmit = async (e) => {
     e.preventDefault();
     if (!standingForm.name) return alert('Club Name is required!');
     
+    // Safely parse the form history to prevent crashes if it's left blank
+    const parsedForm = standingForm.formInput 
+      ? standingForm.formInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s !== "")
+      : [];
+    
     const payload = {
-      ...standingForm,
-      rank: Number(standingForm.rank),
-      p: Number(standingForm.p),
-      w: Number(standingForm.w),
-      d: Number(standingForm.d),
-      l: Number(standingForm.l),
-      gf: Number(standingForm.gf),
-      ga: Number(standingForm.ga),
-      pts: Number(standingForm.pts),
-      form: standingForm.formInput.split(',').map(s => s.trim().toUpperCase())
+      name: standingForm.name,
+      rank: Number(standingForm.rank) || 1,
+      p: Number(standingForm.p) || 0,
+      w: Number(standingForm.w) || 0,
+      d: Number(standingForm.d) || 0,
+      l: Number(standingForm.l) || 0,
+      gf: Number(standingForm.gf) || 0,
+      ga: Number(standingForm.ga) || 0,
+      pts: Number(standingForm.pts) || 0,
+      form: parsedForm
     };
 
     try {
@@ -279,23 +283,28 @@ export default function Admin({
         body: JSON.stringify(payload)
       });
 
-      if (res.ok) {
-        const savedTeam = await res.json();
-        const existingIdx = (standings || []).findIndex(t => t.name === savedTeam.name);
-        
-        if (existingIdx > -1) {
-          setStandings(standings.map(t => t.name === savedTeam.name ? savedTeam : t).sort((a,b) => a.rank - b.rank));
-        } else {
-          setStandings([...(standings || []), savedTeam].sort((a,b) => a.rank - b.rank));
-        }
-        
-        // Reset metrics input form parameters
-        setStandingForm({ rank: 1, name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W' });
-        alert('📊 Standings matrix row updated smoothly!');
+      // 🚨 FIX: If the server rejects the data (400 Bad Request), show the EXACT reason on screen!
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(`❌ DATABASE REJECTED IT:\n\n${errorData.error}`);
+        return; // Stop execution
       }
+
+      const savedTeam = await res.json();
+      const existingIdx = (standings || []).findIndex(t => t.name === savedTeam.name);
+      
+      if (existingIdx > -1) {
+        setStandings(standings.map(t => t.name === savedTeam.name ? savedTeam : t).sort((a,b) => a.rank - b.rank));
+      } else {
+        setStandings([...(standings || []), savedTeam].sort((a,b) => a.rank - b.rank));
+      }
+      
+      setStandingForm({ rank: 1, name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W' });
+      alert('✅ Standings matrix row updated smoothly!');
+      
     } catch (err) {
       console.error(err);
-      alert('Error updating standings rows.');
+      alert('Network error communicating with the server.');
     }
   };
 
