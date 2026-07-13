@@ -4,6 +4,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import Fixture from './models/Fixture.js'
 import cors from 'cors';
+import Standing from './models/Standing.js';
 import dotenv from 'dotenv';
 import Admin from './models/Admin.js';
 
@@ -140,6 +141,41 @@ app.delete('/api/fixtures/:id', async (req, res) => {
   try {
     await Fixture.findByIdAndDelete(req.params.id);
     res.json({ message: 'Fixture entry removed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// ==========================================================
+// 📊 LEAGUE STANDINGS ENDPOINTS
+// ==========================================================
+app.get('/api/standings', async (req, res) => {
+  try {
+    // Sort by rank ascending (1st place at the top)
+    const table = await Standing.find().sort({ rank: 1 });
+    res.json(table);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/standings', async (req, res) => {
+  try {
+    // Check if team already exists to update it, or create a new entry
+    const query = { name: req.body.name };
+    const update = req.body;
+    const options = { upsert: true, new: true, setDefaultsOnInsert: true };
+
+    const savedTeam = await Standing.findOneAndUpdate(query, update, options);
+    res.status(201).json(savedTeam);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/standings/:id', async (req, res) => {
+  try {
+    await Standing.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Team removed from standings.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

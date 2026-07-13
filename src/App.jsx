@@ -10,7 +10,7 @@ import Gallery from './pages/Gallery';
 import Admin from './pages/Admin';
 import './App.css';
 import Players from './pages/Squad';
-import FixturesPage from './pages/FixturesPage'; // 🎯 We'll create this public page next!
+import FixturesPage from './pages/FixturesPage'; 
 
 const API_BASE = import.meta.env.PROD 
   ? "https://junda-united-fc.onrender.com/api" 
@@ -19,9 +19,10 @@ const API_BASE = import.meta.env.PROD
 export default function App() {
   // 1. Initialize State with empty arrays (Waiting for Cloud Data)
   const [news, setNews] = useState([]);
-  const [fixtures, setFixtures] = useState([]); // ✓ State declared perfectly
+  const [fixtures, setFixtures] = useState([]); 
   const [players, setPlayers] = useState([]);
   const [gallery, setGallery] = useState([]);
+  const [standings, setStandings] = useState([]); // 🎯 NEW: Dynamic Standings state tracking node
 
   // 2. Fetch all collections from MongoDB Atlas when the website mounts
   useEffect(() => {
@@ -34,11 +35,18 @@ export default function App() {
           setNews(newsData);
         }
 
-        // 🎯 FIX 1: Fetch Fixtures data from cloud database
+        // Fetch Fixtures data from cloud database
         const fixturesRes = await fetch(`${API_BASE}/fixtures`);
         if (fixturesRes.ok) {
           const fixturesData = await fixturesRes.json();
           setFixtures(fixturesData);
+        }
+
+        // 🎯 NEW: Fetch dynamic live standings rows from backend
+        const standingsRes = await fetch(`${API_BASE}/standings`);
+        if (standingsRes.ok) {
+          const standingsData = await standingsRes.json();
+          setStandings(standingsData);
         }
 
         // Fetch Players/Squad
@@ -72,10 +80,10 @@ export default function App() {
         <Route path="/gallery" element={<Gallery gallery={gallery} />} />
         <Route path="/squad" element={<Players players={players} />} />
         
-        {/* 🎯 FIX 2: Public Route to view the fixture lineup */}
-        <Route path="/fixtures" element={<FixturesPage fixtures={fixtures} />} />
+        {/* 🎯 UPDATE: Pass live standings down to the public Match Centre screen */}
+        <Route path="/fixtures" element={<FixturesPage fixtures={fixtures} standings={standings} />} />
         
-        {/* 🎯 FIX 3: Pass fixture hooks to Admin so forms can trigger updates */}
+        {/* 🎯 UPDATE: Pass standing hooks to Admin so submission inputs affect data */}
         <Route 
           path="/admin" 
           element={
@@ -88,6 +96,8 @@ export default function App() {
               setGallery={setGallery}
               fixtures={fixtures}
               setFixtures={setFixtures} 
+              standings={standings}
+              setStandings={setStandings}
               API_BASE={API_BASE}
             />
           } 

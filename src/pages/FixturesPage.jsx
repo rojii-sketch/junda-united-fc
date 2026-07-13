@@ -2,7 +2,8 @@
 import React from 'react';
 import StandingsTable from '../components/StandingsTable';
 
-export default function FixturesPage({ fixtures }) {
+// 🎯 FIX 1: Destructured 'standings' prop along with your fixtures data hook
+export default function FixturesPage({ fixtures, standings }) {
   // Separate matches dynamically into Upcoming and Completed sections
   const upcomingMatches = fixtures.filter(m => m.status === 'Upcoming' || !m.status);
   const completedMatches = fixtures.filter(m => m.status === 'Completed');
@@ -115,12 +116,13 @@ export default function FixturesPage({ fixtures }) {
         )}
       </section>
 
-      {/* 🎯 SECTION 3: LEAGUE STANDINGS TABLE */}
-      <section style={{ marginTop: '4rem' }}>
+      {/* 🎯 FIX 2: Attached id="standings" to align with Navbar smooth scroll mapping */}
+      <section id="standings" style={{ marginTop: '4rem', scrollMarginTop: '2rem' }}>
         <h2 style={{ fontSize: '1.6rem', color: '#1e293b', borderLeft: '5px solid #1e3a8a', paddingLeft: '0.75rem', marginBottom: '1.5rem', letterSpacing: '0.03em' }}>
           League Standings
         </h2>
-        <StandingsTable />
+        {/* 🎯 FIX 3: Passed the dynamic cloud 'standings' data to the grid */}
+        <StandingsTable standings={standings} />
       </section>
 
     </div>
