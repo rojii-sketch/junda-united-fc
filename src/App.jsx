@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import ArticleDetail from './pages/ArticleDetail';
 import News from './pages/News';
+import Footer from './components/Footer';
 import Gallery from './pages/Gallery';
 import Admin from './pages/Admin';
 import './App.css';
@@ -80,6 +81,17 @@ export default function App() {
         {/* DYNAMIC ROUTE FOR DETAILED ARTICLES */}
         <Route path="/news/:id" element={<ArticleDetail news={news} />} />
       </Routes>
+
+    <Routes>
+      <Route path="/" element={<News news={news} />} />
+      <Route path="/gallery" element={<Gallery gallery={gallery} />} />
+      <Route path="/squad" element={<Players players={players} />} />
+      <Route path="/admin" element={<Admin /* ... props */ />} />
+      <Route path="/news/:id" element={<ArticleDetail news={news} />} />
+    </Routes>
+
+    {/* 🎯 PLACED SAFELY OUTSIDE THE SWITCH BLOCKS TO RENDER EVERYWHERE */}
+    <Footer />
     </BrowserRouter>
   );
 }
