@@ -9,7 +9,6 @@ import Footer from './components/Footer';
 import Gallery from './pages/Gallery';
 import Admin from './pages/Admin';
 import './App.css';
-import Standing from './models/Standing.js'; // 🎯 CRITICAL: Ensure '.js' is included!
 import Players from './pages/Squad';
 import FixturesPage from './pages/FixturesPage'; 
 
