@@ -12,7 +12,6 @@ export default function Gallery({ gallery = [] }) {
       {gallery.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '4rem 0', color: '#a0aec0' }}>
           <p style={{ fontSize: '1.2rem' }}>🖼️ Media records are currently spinning up or empty.</p>
-          <p style={{ fontSize: '0.9rem' }}>Upload some assets in your admin panel to light up this page!</p>
         </div>
       ) : (
         <div className="gallery-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem' }}>
