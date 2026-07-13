@@ -160,8 +160,11 @@ app.get('/api/standings', async (req, res) => {
 
 app.post('/api/standings', async (req, res) => {
   try {
-    // Check if team already exists to update it, or create a new entry
-   const options = { 
+    // 🎯 RE-ADDED: The missing variables that define the search and the data
+    const query = { name: req.body.name };
+    const update = req.body;
+    
+    const options = { 
       upsert: true, 
       new: true, 
       setDefaultsOnInsert: true,
