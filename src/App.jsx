@@ -9,15 +9,16 @@ import Gallery from './pages/Gallery';
 import Admin from './pages/Admin';
 import './App.css';
 import Players from './pages/Squad';
+
 const API_BASE = import.meta.env.PROD 
   ? "https://junda-united-fc.onrender.com/api" 
   : "http://localhost:5000/api";
+
 export default function App() {
   // 1. Initialize State with empty arrays (Waiting for Cloud Data)
   const [news, setNews] = useState([]);
   const [players, setPlayers] = useState([]);
   const [gallery, setGallery] = useState([]);
-
 
   // 2. Fetch all collections from MongoDB Atlas when the website mounts
   useEffect(() => {
@@ -53,16 +54,15 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      {/* Your Navbar stays visible on every single page layout */}
+      {/* Top Header Strip */}
       <Navbar /> 
 
-      {/* The Routes container controls which component renders based on the URL */}
+      {/* 🎯 FIX: Exactly ONE router configuration block maps layout frames */}
       <Routes>
         <Route path="/" element={<News news={news} />} />
         <Route path="/gallery" element={<Gallery gallery={gallery} />} />
         <Route path="/squad" element={<Players players={players} />} />
         
-        {/* Pass API_BASE down to Admin so its forms can send POST and DELETE network requests */}
         <Route 
           path="/admin" 
           element={
@@ -78,20 +78,11 @@ export default function App() {
           } 
         />
         
-        {/* DYNAMIC ROUTE FOR DETAILED ARTICLES */}
         <Route path="/news/:id" element={<ArticleDetail news={news} />} />
       </Routes>
 
-    <Routes>
-      <Route path="/" element={<News news={news} />} />
-      <Route path="/gallery" element={<Gallery gallery={gallery} />} />
-      <Route path="/squad" element={<Players players={players} />} />
-      <Route path="/admin" element={<Admin /* ... props */ />} />
-      <Route path="/news/:id" element={<ArticleDetail news={news} />} />
-    </Routes>
-
-    {/* 🎯 PLACED SAFELY OUTSIDE THE SWITCH BLOCKS TO RENDER EVERYWHERE */}
-    <Footer />
+      {/* Bottom Brand Anchor */}
+      <Footer />
     </BrowserRouter>
   );
 }
