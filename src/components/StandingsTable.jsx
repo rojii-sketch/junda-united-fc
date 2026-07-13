@@ -1,16 +1,17 @@
 // src/components/StandingsTable.jsx
 import React from 'react';
 
-export default function StandingsTable() {
-  // Current Group D Simulated Standings mapping the actual campaign trajectory
-  const teams = [
-    { rank: 1, name: 'Junda United FC', p: 12, w: 9, d: 2, l: 1, gf: 26, ga: 7, pts: 29, form: ['W', 'W', 'W', 'W', 'D'] },
-    { rank: 2, name: 'Mablanda FC', p: 11, w: 7, d: 3, l: 1, gf: 19, ga: 9, pts: 24, form: ['W', 'D', 'W', 'L', 'W'] },
-    { rank: 3, name: 'PNI Football Club', p: 11, w: 5, d: 2, l: 4, gf: 14, ga: 12, pts: 17, form: ['L', 'W', 'L', 'W', 'D'] },
-    { rank: 4, name: 'Blue Rangers', p: 12, w: 4, d: 1, l: 7, gf: 12, ga: 22, pts: 13, form: ['L', 'L', 'W', 'L', 'L'] },
-    { rank: 5, name: 'Babito FC', p: 12, w: 3, d: 2, l: 7, gf: 8, ga: 15, pts: 11, form: ['L', 'L', 'L', 'W', 'L'] },
-    { rank: 6, name: 'Black Dragon', p: 12, w: 2, d: 2, l: 8, gf: 7, ga: 21, pts: 8, form: ['L', 'W', 'L', 'L', 'D'] },
-  ];
+// 🎯 FIX 1: Accept the standings prop passed from FixturesPage or News
+export default function StandingsTable({ standings = [] }) {
+  
+  // 🎯 FIX 2: Check if there's no data yet, show loading instead of crashing
+  if (standings.length === 0) {
+    return (
+      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+        ⏳ Loading official league standings from the cloud...
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '1.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.02)', overflowX: 'auto' }}>
@@ -39,13 +40,16 @@ export default function StandingsTable() {
           </tr>
         </thead>
         <tbody>
-          {teams.map((team) => {
-            const isJunda = team.name.includes('Junda United');
-            const gd = team.gf - team.ga;
+          {/* 🎯 FIX 3: Map over the LIVE standings array instead of the hardcoded one */}
+          {standings.map((team) => {
+            // Add safety check in case a team name is missing
+            const teamName = team.name || "Unknown Team";
+            const isJunda = teamName.includes('Junda United');
+            const gd = (team.gf || 0) - (team.ga || 0);
 
             return (
               <tr 
-                key={team.rank} 
+                key={team._id || team.rank} 
                 style={{ 
                   borderBottom: '1px solid #e2e8f0', 
                   background: isJunda ? '#f0fdf4' : 'transparent',
@@ -54,20 +58,17 @@ export default function StandingsTable() {
                   transition: 'background 0.2s'
                 }}
               >
-                {/* Position Rank */}
                 <td style={{ padding: '1rem 0.5rem', fontWeight: 'bold', color: team.rank <= 2 ? '#2563eb' : '#64748b' }}>
                   {team.rank}
                 </td>
                 
-                {/* Club Identity */}
                 <td style={{ padding: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     {isJunda && <span>🛡️</span>}
-                    {team.name}
+                    {teamName}
                   </div>
                 </td>
                 
-                {/* Stats Nodes */}
                 <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>{team.p}</td>
                 <td style={{ padding: '1rem 0.5rem', textAlign: 'center', color: '#10b981' }}>{team.w}</td>
                 <td style={{ padding: '1rem 0.5rem', textAlign: 'center', color: '#64748b' }}>{team.d}</td>
@@ -76,14 +77,12 @@ export default function StandingsTable() {
                   {gd > 0 ? `+${gd}` : gd}
                 </td>
                 
-                {/* Absolute Points */}
                 <td style={{ padding: '1rem 0.5rem', textAlign: 'center', fontWeight: '800', fontSize: '1.05rem', color: isJunda ? '#166534' : '#0f172a' }}>
                   {team.pts}
                 </td>
 
-                {/* Micro Form Badge Indicators */}
                 <td style={{ padding: '1rem', display: 'flex', gap: '0.25rem', justifyContent: 'center' }}>
-                  {team.form.map((f, idx) => (
+                  {(team.form || []).map((f, idx) => (
                     <span 
                       key={idx} 
                       style={{ 
