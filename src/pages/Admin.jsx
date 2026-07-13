@@ -353,10 +353,11 @@ export default function Admin({
     );
   }
 
-  // --- REUSABLE STYLES FOR ALL LISTS ---
-  const listContainerStyle = { marginTop: '2.5rem', maxHeight: '350px', overflowY: 'auto', background: '#f1f5f9', padding: '1rem', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' };
-  const listHeaderStyle = { position: 'sticky', top: '-1rem', background: '#f1f5f9', paddingTop: '1rem', paddingBottom: '0.75rem', marginTop: 0, marginBottom: '1rem', borderBottom: '2px solid #e2e8f0', zIndex: 10 };
-  const listRowStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '1rem', borderRadius: '8px', marginBottom: '0.75rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' };
+  // 🎯 RESPONSIVE STYLES (Forces full-width stacking so nothing gets squeezed)
+  const panelStyle = { display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' };
+  const listContainerStyle = { width: '100%', boxSizing: 'border-box', maxHeight: '450px', overflowY: 'auto', overflowX: 'hidden', background: '#f1f5f9', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' };
+  const listHeaderStyle = { position: 'sticky', top: '-1.25rem', background: '#f1f5f9', paddingTop: '1rem', paddingBottom: '0.75rem', marginTop: 0, marginBottom: '1rem', borderBottom: '2px solid #e2e8f0', zIndex: 10 };
+  const listRowStyle = { display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '1rem', borderRadius: '8px', marginBottom: '0.75rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' };
 
   return (
     <div className="page-container">
@@ -365,7 +366,7 @@ export default function Admin({
         <p>Create, update and remove club assets in real-time.</p>
       </header>
 
-      <div className="admin-tabs">
+      <div className="admin-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
         <button className={activeTab === 'news' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('news')}>Manage News</button>
         <button className={activeTab === 'fixtures' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('fixtures')}>Manage Fixtures</button>
         <button className={activeTab === 'standings' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('standings')}>Manage Standings</button>
@@ -381,13 +382,13 @@ export default function Admin({
 
       {/* --- NEWS SECTION --- */}
       {activeTab === 'news' && (
-        <div className="admin-panel">
-          <form onSubmit={handleAddNews} className="admin-form">
+        <div className="admin-panel" style={panelStyle}>
+          <form onSubmit={handleAddNews} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
             <h3>{editingNewsId ? "📝 Edit Article" : "Post New Article"}</h3>
-            <div className="form-group"><label htmlFor="news-title">Article Title</label><input id="news-title" type="text" placeholder="e.g. Match Victory!" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} /></div>
-            <div className="form-group"><label htmlFor="news-file">Cover Image Upload</label><input id="news-file" type="file" accept="image/*" onChange={e => handleFileUpload(e, 'news')} />{newsForm.imageUrl && <p className="subtext" style={{ color: '#2f855a' }}>✓ Live image loaded</p>}</div>
-            <div className="form-group"><label htmlFor="news-date">Publish Date (Optional)</label><input id="news-date" type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} /></div>
-            <div className="form-group"><label htmlFor="news-content">Article Content</label><textarea id="news-content" placeholder="Write article text here..." rows="4" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea></div>
+            <div className="form-group"><label>Article Title</label><input type="text" placeholder="e.g. Match Victory!" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} /></div>
+            <div className="form-group"><label>Cover Image</label><input type="file" accept="image/*" onChange={e => handleFileUpload(e, 'news')} /></div>
+            <div className="form-group"><label>Publish Date (Optional)</label><input type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} /></div>
+            <div className="form-group"><label>Article Content</label><textarea placeholder="Write article text here..." rows="4" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea></div>
             <button type="submit" className="submit-btn">{editingNewsId ? "Save Changes" : "Publish Post"}</button>
           </form>
           
@@ -395,12 +396,12 @@ export default function Admin({
             <h3 style={listHeaderStyle}>Current Articles ({news.length})</h3>
             {news.map(item => (
               <div key={item._id} style={listRowStyle}>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: '1 1 200px' }}>
                   <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.title}</strong>
                   <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.date}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem', fontSize: '0.85rem' }} onClick={() => startEditNews(item)}>Edit</button>
+                  <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditNews(item)}>Edit</button>
                   <button type="button" className="delete-btn" onClick={() => deleteItem(item._id, 'news')}>Delete</button>
                 </div>
               </div>
@@ -412,17 +413,17 @@ export default function Admin({
 
       {/* --- FIXTURES SECTION --- */}
       {activeTab === 'fixtures' && (
-        <div className="admin-panel">
-          <form onSubmit={handleAddFixture} className="admin-form">
+        <div className="admin-panel" style={panelStyle}>
+          <form onSubmit={handleAddFixture} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
             <h3>Log New Match Fixture</h3>
-            <div className="form-group"><label htmlFor="fix-opponent">Opponent Team Name</label><input id="fix-opponent" type="text" placeholder="e.g. Black Dragon FC" value={fixtureForm.opponent} onChange={e => setFixtureForm({...fixtureForm, opponent: e.target.value})} /></div>
-            <div className="form-group" style={{ display: 'flex', gap: '1rem' }}>
-              <div style={{ flex: 1 }}><label htmlFor="fix-date">Match Date</label><input id="fix-date" type="text" placeholder="e.g. 18/07/2026" value={fixtureForm.matchDate} onChange={e => setFixtureForm({...fixtureForm, matchDate: e.target.value})} /></div>
-              <div style={{ flex: 1 }}><label htmlFor="fix-time">Kickoff Time</label><input id="fix-time" type="text" value={fixtureForm.kickoffTime} onChange={e => setFixtureForm({...fixtureForm, kickoffTime: e.target.value})} /></div>
+            <div className="form-group"><label>Opponent Team Name</label><input type="text" placeholder="e.g. Black Dragon FC" value={fixtureForm.opponent} onChange={e => setFixtureForm({...fixtureForm, opponent: e.target.value})} /></div>
+            <div className="form-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ flex: '1 1 150px' }}><label>Match Date</label><input type="text" placeholder="e.g. 18/07/2026" value={fixtureForm.matchDate} onChange={e => setFixtureForm({...fixtureForm, matchDate: e.target.value})} /></div>
+              <div style={{ flex: '1 1 150px' }}><label>Kickoff Time</label><input type="text" value={fixtureForm.kickoffTime} onChange={e => setFixtureForm({...fixtureForm, kickoffTime: e.target.value})} /></div>
             </div>
-            <div className="form-group"><label htmlFor="fix-venue">Stadium Venue</label><input id="fix-venue" type="text" value={fixtureForm.venue} onChange={e => setFixtureForm({...fixtureForm, venue: e.target.value})} /></div>
+            <div className="form-group"><label>Stadium Venue</label><input type="text" value={fixtureForm.venue} onChange={e => setFixtureForm({...fixtureForm, venue: e.target.value})} /></div>
             <div className="form-group" style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px' }}><label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}><input type="checkbox" checked={fixtureForm.isHomeMatch} onChange={e => setFixtureForm({...fixtureForm, isHomeMatch: e.target.checked})} />🏠 Home Match</label></div>
-            <div className="form-group"><label htmlFor="fix-status">Match Progress Status</label><select id="fix-status" value={fixtureForm.status} onChange={e => setFixtureForm({...fixtureForm, status: e.target.value})}><option value="Upcoming">🗓️ Upcoming Match</option><option value="Completed">🏆 Completed</option></select></div>
+            <div className="form-group"><label>Match Progress Status</label><select value={fixtureForm.status} onChange={e => setFixtureForm({...fixtureForm, status: e.target.value})}><option value="Upcoming">🗓️ Upcoming Match</option><option value="Completed">🏆 Completed</option></select></div>
             {fixtureForm.status === 'Completed' && (
               <div className="form-group" style={{ display: 'flex', gap: '1rem', background: '#f0fdf4', padding: '1rem', borderRadius: '8px' }}>
                 <div><label>Junda Score</label><input type="number" min="0" value={fixtureForm.jundaScore} onChange={e => setFixtureForm({...fixtureForm, jundaScore: e.target.value})} style={{ width: '70px' }} /></div>
@@ -437,7 +438,7 @@ export default function Admin({
             <h3 style={listHeaderStyle}>Active Match Logs ({fixtures?.length || 0})</h3>
             {(fixtures || []).map(item => (
               <div key={item._id} style={listRowStyle}>
-                <div>
+                <div style={{ flex: '1 1 200px' }}>
                   <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Junda United vs {item.opponent}</strong>
                   <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.matchDate} • {item.status === 'Completed' ? `Score: ${item.jundaScore}-${item.opponentScore}` : 'Upcoming'}</p>
                 </div>
@@ -451,25 +452,26 @@ export default function Admin({
 
       {/* --- STANDINGS SECTION --- */}
       {activeTab === 'standings' && (
-        <div className="admin-panel">
-          <form onSubmit={handleStandingSubmit} className="admin-form">
+        <div className="admin-panel" style={panelStyle}>
+          <form onSubmit={handleStandingSubmit} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
             <h3>📊 Update League Standings Table</h3>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <div className="form-group" style={{ flex: 1 }}><label>Table Position (Rank)</label><input type="number" min="1" value={standingForm.rank} onChange={e => setStandingForm({...standingForm, rank: e.target.value})} /></div>
-              <div className="form-group" style={{ flex: 2 }}><label>Club Name</label><input type="text" placeholder="e.g. Junda United FC" value={standingForm.name} onChange={e => setStandingForm({...standingForm, name: e.target.value})} required /></div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+              <div className="form-group" style={{ flex: '1 1 100px' }}><label>Pos (Rank)</label><input type="number" min="1" value={standingForm.rank} onChange={e => setStandingForm({...standingForm, rank: e.target.value})} /></div>
+              <div className="form-group" style={{ flex: '2 1 200px' }}><label>Club Name</label><input type="text" placeholder="e.g. Junda United FC" value={standingForm.name} onChange={e => setStandingForm({...standingForm, name: e.target.value})} required /></div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
-              <div className="form-group"><label>Played (P)</label><input type="number" value={standingForm.p} onChange={e => setStandingForm({...standingForm, p: e.target.value})} /></div>
-              <div className="form-group"><label>Wins (W)</label><input type="number" value={standingForm.w} onChange={e => setStandingForm({...standingForm, w: e.target.value})} /></div>
-              <div className="form-group"><label>Draws (D)</label><input type="number" value={standingForm.d} onChange={e => setStandingForm({...standingForm, d: e.target.value})} /></div>
-              <div className="form-group"><label>Losses (L)</label><input type="number" value={standingForm.l} onChange={e => setStandingForm({...standingForm, l: e.target.value})} /></div>
+            
+            {/* Switched to responsive flex grids so they stack nicely on small screens */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '0.5rem' }}>
+              <div className="form-group"><label>P</label><input type="number" value={standingForm.p} onChange={e => setStandingForm({...standingForm, p: e.target.value})} /></div>
+              <div className="form-group"><label>W</label><input type="number" value={standingForm.w} onChange={e => setStandingForm({...standingForm, w: e.target.value})} /></div>
+              <div className="form-group"><label>D</label><input type="number" value={standingForm.d} onChange={e => setStandingForm({...standingForm, d: e.target.value})} /></div>
+              <div className="form-group"><label>L</label><input type="number" value={standingForm.l} onChange={e => setStandingForm({...standingForm, l: e.target.value})} /></div>
+              <div className="form-group"><label>GF</label><input type="number" value={standingForm.gf} onChange={e => setStandingForm({...standingForm, gf: e.target.value})} /></div>
+              <div className="form-group"><label>GA</label><input type="number" value={standingForm.ga} onChange={e => setStandingForm({...standingForm, ga: e.target.value})} /></div>
+              <div className="form-group"><label>Pts</label><input type="number" value={standingForm.pts} onChange={e => setStandingForm({...standingForm, pts: e.target.value})} style={{ fontWeight: 'bold' }} /></div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-              <div className="form-group"><label>Goals For (GF)</label><input type="number" value={standingForm.gf} onChange={e => setStandingForm({...standingForm, gf: e.target.value})} /></div>
-              <div className="form-group"><label>Goals Against (GA)</label><input type="number" value={standingForm.ga} onChange={e => setStandingForm({...standingForm, ga: e.target.value})} /></div>
-              <div className="form-group"><label>Points (Pts)</label><input type="number" value={standingForm.pts} onChange={e => setStandingForm({...standingForm, pts: e.target.value})} style={{ fontWeight: 'bold' }} /></div>
-            </div>
-            <div className="form-group"><label>Form History (Comma separated letters)</label><input type="text" placeholder="W,W,D,L,W" value={standingForm.formInput} onChange={e => setStandingForm({...standingForm, formInput: e.target.value})} /></div>
+            
+            <div className="form-group"><label>Form History (Comma separated)</label><input type="text" placeholder="W,W,D,L,W" value={standingForm.formInput} onChange={e => setStandingForm({...standingForm, formInput: e.target.value})} /></div>
             <button type="submit" className="submit-btn" style={{ background: '#10b981', color: '#fff' }}>💾 Save Team Metrics</button>
           </form>
 
@@ -477,28 +479,28 @@ export default function Admin({
             <h3 style={listHeaderStyle}>Active League Table Rows ({standings?.length || 0})</h3>
             {(standings || []).map(team => (
               <div key={team._id} style={listRowStyle}>
-                <div>
+                <div style={{ flex: '1 1 200px' }}>
                   <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.rank}. {team.name}</strong>
                   <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span> • Record: P {team.p} W {team.w} D {team.d} L {team.l}</p>
                 </div>
                 <button type="button" className="delete-btn" onClick={() => deleteItem(team._id, 'standings')}>Wipe</button>
               </div>
             ))}
-            {(!standings || standings.length === 0) && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No teams logged yet. Save a team above to see it here!</div>}
+            {(!standings || standings.length === 0) && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No teams logged yet.</div>}
           </div>
         </div>
       )}
 
       {/* --- SQUAD SECTION --- */}
       {activeTab === 'squad' && (
-        <div className="admin-panel">
-          <form onSubmit={handleAddPlayer} className="admin-form">
+        <div className="admin-panel" style={panelStyle}>
+          <form onSubmit={handleAddPlayer} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
             <h3>Add Roster Member</h3>
-            <div className="form-group"><label htmlFor="squad-name">Full Name</label><input id="squad-name" type="text" placeholder="e.g. Marcus Vance" value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} /></div>
-            <div className="form-group"><label htmlFor="squad-position">Position</label><input id="squad-position" type="text" placeholder="e.g. Forward" value={playerForm.position} onChange={e => setPlayerForm({...playerForm, position: e.target.value})} /></div>
-            <div className="form-group"><label htmlFor="squad-jersey">Jersey Number</label><input id="squad-jersey" type="text" placeholder="Leave blank if staff" value={playerForm.jerseyNumber} onChange={e => setPlayerForm({...playerForm, jerseyNumber: e.target.value})} /></div>
-            <div className="form-group"><label htmlFor="squad-file">Profile Photo</label><input id="squad-file" type="file" accept="image/*" onChange={e => handleFileUpload(e, 'squad')} /></div>
-            <div className="form-group"><label htmlFor="squad-role">Club Role</label><select id="squad-role" value={playerForm.role} onChange={e => setPlayerForm({...playerForm, role: e.target.value})}><option value="player">First Team Player</option><option value="coach">Coaching Staff</option></select></div>
+            <div className="form-group"><label>Full Name</label><input type="text" placeholder="e.g. Marcus Vance" value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} /></div>
+            <div className="form-group"><label>Position</label><input type="text" placeholder="e.g. Forward" value={playerForm.position} onChange={e => setPlayerForm({...playerForm, position: e.target.value})} /></div>
+            <div className="form-group"><label>Jersey Number</label><input type="text" placeholder="Leave blank if staff" value={playerForm.jerseyNumber} onChange={e => setPlayerForm({...playerForm, jerseyNumber: e.target.value})} /></div>
+            <div className="form-group"><label>Profile Photo</label><input type="file" accept="image/*" onChange={e => handleFileUpload(e, 'squad')} /></div>
+            <div className="form-group"><label>Club Role</label><select value={playerForm.role} onChange={e => setPlayerForm({...playerForm, role: e.target.value})}><option value="player">First Team Player</option><option value="coach">Coaching Staff</option></select></div>
             <button type="submit" className="submit-btn" disabled={isUploading}>Add to Roster</button>
           </form>
 
@@ -506,7 +508,7 @@ export default function Admin({
             <h3 style={listHeaderStyle}>Current Roster ({players.length})</h3>
             {players.map(item => (
               <div key={item._id} style={listRowStyle}>
-                <div>
+                <div style={{ flex: '1 1 200px' }}>
                   <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.name}</strong>
                   <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.position} • <span className="role-tag">{item.role}</span></p>
                 </div>
@@ -520,12 +522,12 @@ export default function Admin({
 
       {/* --- GALLERY SECTION --- */}
       {activeTab === 'gallery' && (
-        <div className="admin-panel">
-          <form onSubmit={handleAddGallery} className="admin-form">
+        <div className="admin-panel" style={panelStyle}>
+          <form onSubmit={handleAddGallery} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
             <h3>Upload Media Item</h3>
-            <div className="form-group"><label htmlFor="gallery-file">Select Media File</label><input id="gallery-file" type="file" accept="image/*" onChange={e => handleFileUpload(e, 'gallery')} /></div>
-            <div className="form-group"><label htmlFor="gallery-caption">Description / Caption</label><input id="gallery-caption" type="text" placeholder="Highlights" value={galleryForm.caption} onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})} /></div>
-            <div className="form-group"><label htmlFor="gallery-type">Media Type</label><select id="gallery-type" value={galleryForm.type} onChange={e => setGalleryForm({...galleryForm, type: e.target.value})}><option value="image">Photo Upload</option><option value="video">Video Loop</option></select></div>
+            <div className="form-group"><label>Select Media File</label><input type="file" accept="image/*" onChange={e => handleFileUpload(e, 'gallery')} /></div>
+            <div className="form-group"><label>Description / Caption</label><input type="text" placeholder="Highlights" value={galleryForm.caption} onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})} /></div>
+            <div className="form-group"><label>Media Type</label><select value={galleryForm.type} onChange={e => setGalleryForm({...galleryForm, type: e.target.value})}><option value="image">Photo Upload</option><option value="video">Video Loop</option></select></div>
             <button type="submit" className="submit-btn" disabled={isUploading}>Add to Gallery</button>
           </form>
 
@@ -533,7 +535,7 @@ export default function Admin({
             <h3 style={listHeaderStyle}>Current Assets ({gallery.length})</h3>
             {gallery.map(item => (
               <div key={item._id} style={listRowStyle}>
-                <div>
+                <div style={{ flex: '1 1 200px' }}>
                   <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.caption || "Untitled"}</strong>
                   <p className="subtext type-tag" style={{ marginTop: '0.35rem', display: 'inline-block' }}>{item.type}</p>
                 </div>
