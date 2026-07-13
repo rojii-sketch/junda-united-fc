@@ -17,7 +17,6 @@ export default function App() {
   const [players, setPlayers] = useState([]);
   const [gallery, setGallery] = useState([]);
 
-  const API_BASE = "http://localhost:5000/api";
 
   // 2. Fetch all collections from MongoDB Atlas when the website mounts
   useEffect(() => {
