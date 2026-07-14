@@ -84,6 +84,9 @@ app.post('/api/admin/login', (req, res) => {
   const ADMIN_USER = process.env.ADMIN_USER || 'admin';
   const ADMIN_PASS = process.env.ADMIN_PASS || 'junda2026';
 
+  console.log(`React sent -> User: "${username}" | Pass: "${password}"`);
+  console.log(`Render expects -> User: "${ADMIN_USER}" | Pass: "${ADMIN_PASS}"`);
+
   if (username === ADMIN_USER && password === ADMIN_PASS) {
     const token = jwt.sign(
       { username: ADMIN_USER, role: 'admin' }, 
