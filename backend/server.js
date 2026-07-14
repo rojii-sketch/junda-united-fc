@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
-
+import jwt from 'jsonwebtoken';
 import express from 'express';
 import mongoose from 'mongoose';
 import Fixture from './models/Fixture.js'
@@ -14,9 +14,10 @@ import News from './models/News.js';
 import Player from './models/Player.js';
 import Gallery from './models/Gallery.js';
 import NodeCache from 'node-cache';
-const apiCache = new NodeCache({ stdTTL: 600 }); // Data lives in memory for 5 minutes (300 seconds)
+const apiCache = new NodeCache({ stdTTL: 600 }); // Data lives in memory for 10 minutes (600 seconds)
 dotenv.config();
 const app = express();
+
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -31,27 +32,22 @@ const upload = multer({ storage });
 // Middleware
 app.use(cors());
 app.use(express.json()); // Allows server to read JSON data bodies sent by React
+
 // 🛡️ THE MAGIC CACHE SHIELD
 app.use('/api', (req, res, next) => {
-  // 1. We only intercept GET requests (public users loading the site)
   if (req.method === 'GET') {
-    
-    // Tell Cloudflare, Vercel, and the user's browser to cache this data for 10 minutes!
     res.set('Cache-Control', 'public, max-age=600');
 
     const key = req.originalUrl;
     const cachedData = apiCache.get(key);
 
-    // 🎯 If data is in memory, serve it instantly! (Protects MongoDB)
     if (cachedData) {
       console.log(`⚡ FAST LOAD: Serving ${key} from Render Memory`);
       return res.json(JSON.parse(cachedData));
     }
 
-    // 🎯 If no cache exists, let the request hit MongoDB, but intercept the result and save it!
     const originalJson = res.json.bind(res);
     res.json = (body) => {
-      // Only cache successful requests
       if (res.statusCode === 200) {
         apiCache.set(key, JSON.stringify(body));
         console.log(`💾 DB READ: Saved ${key} to Render Memory`);
@@ -60,8 +56,6 @@ app.use('/api', (req, res, next) => {
     };
     next();
   } else {
-    
-    // This ensures your fans see your updates the second you hit "Save".
     if (req.originalUrl.includes('/api/')) {
        console.log('🧹 ADMIN UPDATE DETECTED: Wiping Cache to pull fresh data');
        apiCache.flushAll();
@@ -69,6 +63,7 @@ app.use('/api', (req, res, next) => {
     next();
   }
 });
+
 // Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('🚀 Connected smoothly to MongoDB Atlas Cloud Database'))
@@ -79,218 +74,181 @@ app.get('/api/test', (req, res) => {
   res.json({ message: "Junda United API is alive and kicking!" });
 });
 
-// ==========================================================
-// 📰 2. NEWS ENDPOINTS (Fetch, Create, Update, Delete)
-// ==========================================================
 
-// GET all posts (Newest first)
+// ==========================================================
+// 🔐 SECURE ADMIN LOGIN ENDPOINT
+// ==========================================================
+app.post('/api/admin/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+  const ADMIN_PASS = process.env.ADMIN_PASS || 'junda2026';
+
+  if (username === ADMIN_USER && password === ADMIN_PASS) {
+    const token = jwt.sign(
+      { username: ADMIN_USER, role: 'admin' }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '2h' }
+    );
+    
+    res.json({ success: true, token, message: "Authentication successful" });
+  } else {
+    res.status(401).json({ success: false, message: 'Invalid credentials' });
+  }
+});
+
+// 🛡️ JWT VERIFICATION BOUNCER
+const requireAuth = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Access Denied. No valid token provided.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.admin = decoded; // Attach the VIP info to the request
+    next(); // Let them through!
+  } catch (err) {
+    res.status(401).json({ error: 'Access Denied. Token is invalid or expired.' });
+  }
+};
+
+
+// ==========================================================
+// 📰 NEWS ENDPOINTS
+// ==========================================================
 app.get('/api/news', async (req, res) => {
-  try {
-    const articles = await News.find().sort({ createdAt: -1 });
-    res.json(articles);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  try { res.json(await News.find().sort({ createdAt: -1 })); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST a new article
-app.post('/api/news', async (req, res) => {
-  try {
-    const newArticle = new News(req.body);
-    const savedArticle = await newArticle.save();
-    res.status(201).json(savedArticle);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+app.post('/api/news', requireAuth, async (req, res) => {
+  try { res.status(201).json(await new News(req.body).save()); } 
+  catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// PUT (Update) an article
-app.put('/api/news/:id', async (req, res) => {
-  try {
-    const updatedArticle = await News.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(updatedArticle);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+app.put('/api/news/:id', requireAuth, async (req, res) => {
+  try { res.json(await News.findByIdAndUpdate(req.params.id, req.body, { new: true })); } 
+  catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-// DELETE an article
-app.delete('/api/news/:id', async (req, res) => {
-  try {
-    await News.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Article wiped clean from cloud storage' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.delete('/api/news/:id', requireAuth, async (req, res) => {
+  try { await News.findByIdAndDelete(req.params.id); res.json({ message: 'Article wiped clean' }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
+
 
 // ==========================================================
-// ⚽ 3. SQUAD ROSTER ENDPOINTS
+// ⚽ SQUAD ROSTER ENDPOINTS
 // ==========================================================
 app.get('/api/players', async (req, res) => {
   try { res.json(await Player.find()); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/players', async (req, res) => {
-  try { res.status(201).json(await new Player(req.body).save()); } catch (err) { res.status(400).json({ error: err.message }); }
+app.post('/api/players', requireAuth, async (req, res) => {
+  try { res.status(201).json(await new Player(req.body).save()); } 
+  catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-app.delete('/api/players/:id', async (req, res) => {
-  try { await Player.findByIdAndDelete(req.params.id); res.json({ message: 'Player removed' }); } catch (err) { res.status(500).json({ error: err.message }); }
+app.put('/api/players/:id', requireAuth, async (req, res) => {
+  try { res.json(await Player.findByIdAndUpdate(req.params.id, req.body, { new: true })); } 
+  catch (err) { res.status(400).json({ error: err.message }); }
 });
+
+app.delete('/api/players/:id', requireAuth, async (req, res) => {
+  try { await Player.findByIdAndDelete(req.params.id); res.json({ message: 'Player removed' }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 
 // ==========================================================
-// 📸 4. GALLERY ENDPOINTS
+// 📸 GALLERY ENDPOINTS
 // ==========================================================
 app.get('/api/gallery', async (req, res) => {
   try { res.json(await Gallery.find()); } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/gallery', async (req, res) => {
-  try { res.status(201).json(await new Gallery(req.body).save()); } catch (err) { res.status(400).json({ error: err.message }); }
+app.post('/api/gallery', requireAuth, async (req, res) => {
+  try { res.status(201).json(await new Gallery(req.body).save()); } 
+  catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-app.delete('/api/gallery/:id', async (req, res) => {
-  try { await Gallery.findByIdAndDelete(req.params.id); res.json({ message: 'Asset removed' }); } catch (err) { res.status(500).json({ error: err.message }); }
+app.delete('/api/gallery/:id', requireAuth, async (req, res) => {
+  try { await Gallery.findByIdAndDelete(req.params.id); res.json({ message: 'Asset removed' }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+
 // ==========================================================
 // 🗓️ FIXTURES & MATCH HUB ENDPOINTS
 // ==========================================================
 app.get('/api/fixtures', async (req, res) => {
-  try {
-    // Sort by date or creation order
-    const matches = await Fixture.find().sort({ createdAt: -1 });
-    res.json(matches);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  try { res.json(await Fixture.find().sort({ createdAt: -1 })); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/fixtures', async (req, res) => {
-  try {
-    const newMatch = new Fixture(req.body);
-    const savedMatch = await newMatch.save();
-    res.status(201).json(savedMatch);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
-  }
+app.post('/api/fixtures', requireAuth, async (req, res) => {
+  try { res.status(201).json(await new Fixture(req.body).save()); } 
+  catch (err) { res.status(400).json({ error: err.message }); }
 });
 
-app.delete('/api/fixtures/:id', async (req, res) => {
-  try {
-    await Fixture.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Fixture entry removed successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+app.delete('/api/fixtures/:id', requireAuth, async (req, res) => {
+  try { await Fixture.findByIdAndDelete(req.params.id); res.json({ message: 'Fixture removed' }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+
 // ==========================================================
 // 📊 LEAGUE STANDINGS ENDPOINTS
 // ==========================================================
 app.get('/api/standings', async (req, res) => {
-  try {
-    // Sort by rank ascending (1st place at the top)
-    const table = await Standing.find().sort({ rank: 1 });
-    res.json(table);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  try { res.json(await Standing.find().sort({ rank: 1 })); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.post('/api/standings', async (req, res) => {
+app.post('/api/standings', requireAuth, async (req, res) => {
   try {
-    // 🎯 RE-ADDED: The missing variables that define the search and the data
     const query = { name: req.body.name };
     const update = req.body;
-    
-    const options = { 
-      upsert: true, 
-      new: true, 
-      setDefaultsOnInsert: true,
-      runValidators: true 
-    };
-
-    const savedTeam = await Standing.findOneAndUpdate(query, update, options);
-    res.status(201).json(savedTeam);
-  } catch (err) {
-    console.error("Database validation error:", err.message);
-    res.status(400).json({ error: err.message });
-  }
-});
-
-app.delete('/api/standings/:id', async (req, res) => {
-  try {
-    await Standing.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Team removed from standings.' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-// ==========================================================
-// 🔐 5. SECURE ADMIN LOGIN ENDPOINT
-// ==========================================================
-app.post('/api/admin/login', async (req, res) => {
-  const { username, password } = req.body;
-
-  try {
-    // Look for the admin record in MongoDB
-    const admin = await Admin.findOne({ username });
-
-    if (!admin) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
-    }
-
-    // Check if the password matches the database record
-    if (admin.password === password) {
-      return res.json({ success: true, message: 'Access granted!' });
-    } else {
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-// PUT (Update) a player's profile
-app.put('/api/players/:id', async (req, res) => {
-  try {
-    const updatedPlayer = await Player.findByIdAndUpdate(
-      req.params.id, 
-      req.body, 
-      { new: true } // This tells MongoDB to return the updated document, not the old one
-    );
-    res.json(updatedPlayer);
+    const options = { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true };
+    res.status(201).json(await Standing.findOneAndUpdate(query, update, options));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
+
+app.delete('/api/standings/:id', requireAuth, async (req, res) => {
+  try { await Standing.findByIdAndDelete(req.params.id); res.json({ message: 'Team removed' }); } 
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+
 // ==========================================================
-// 📸 CLOUDINARY IMAGE UPLOAD ENDPOINT (With Network Optimization)
+// 📸 CLOUDINARY IMAGE UPLOAD ENDPOINT
 // ==========================================================
-app.post('/api/upload', upload.single('image'), (req, res) => {
+// Note: We also protect the upload route so randos can't upload to your Cloudinary!
+app.post('/api/upload', requireAuth, upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded.' });
   }
 
-  // 🎯 OPTIMIZATION: Inject timeout configurations for slower connections
   const uploadStream = cloudinary.uploader.upload_stream(
-    { 
-      folder: 'junda_united',
-      timeout: 120000, // 👈 Sets internal network timeout limit to 2 minutes
-    }, 
+    { folder: 'junda_united', timeout: 120000 }, 
     (error, result) => {
       if (error) {
         console.error('Cloudinary Upload Error:', error);
         return res.status(500).json({ success: false, error: error.message });
       }
-      
-      // Send back the secure live URL link generated by Cloudinary
       res.json({ success: true, url: result.secure_url });
     }
   );
 
-  // Stream the file buffer data up to Cloudinary
   uploadStream.end(req.file.buffer);
 });
+
 // Boot listening port execution
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🛰️  Backend API Active on http://localhost:${PORT}`));
