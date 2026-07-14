@@ -14,7 +14,7 @@ import News from './models/News.js';
 import Player from './models/Player.js';
 import Gallery from './models/Gallery.js';
 import NodeCache from 'node-cache';
-const apiCache = new NodeCache({ stdTTL: 300 }); // Data lives in memory for 5 minutes (300 seconds)
+const apiCache = new NodeCache({ stdTTL: 600 }); // Data lives in memory for 5 minutes (300 seconds)
 dotenv.config();
 const app = express();
 // Configure Cloudinary
@@ -36,8 +36,8 @@ app.use('/api', (req, res, next) => {
   // 1. We only intercept GET requests (public users loading the site)
   if (req.method === 'GET') {
     
-    // Tell Cloudflare, Vercel, and the user's browser to cache this data for 5 minutes!
-    res.set('Cache-Control', 'public, max-age=300');
+    // Tell Cloudflare, Vercel, and the user's browser to cache this data for 10 minutes!
+    res.set('Cache-Control', 'public, max-age=600');
 
     const key = req.originalUrl;
     const cachedData = apiCache.get(key);
