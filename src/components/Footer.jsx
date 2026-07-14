@@ -3,58 +3,73 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
+  const year = new Date().getFullYear();
 
   return (
-    <footer className="club-footer" style={{ background: '#1a202c', color: '#edf2f7', paddingTop: '4rem', paddingBottom: '2rem', marginTop: '5rem', borderTop: '4px solid #2b6cb0' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '2.5rem' }}>
+    <footer style={{ background: '#0f172a', color: '#f8fafc', padding: '3rem 1rem 1.5rem 1rem', marginTop: '4rem' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2rem', borderBottom: '1px solid #334155', paddingBottom: '2rem', marginBottom: '1.5rem' }}>
         
-        {/* BRAND COLUMN */}
+        {/* Brand Column */}
         <div>
-          <h3 style={{ color: '#fff', margin: '0 0 1rem 0', fontSize: '1.4rem', letterSpacing: '0.05em' }}>JUNDA UNITED FC</h3>
-          <p style={{ color: '#a0aec0', fontSize: '0.9rem', lineHeight: '1.6' }}>
-            Empowering youth talents across Mombasa County through elite football development, structural integrity, and deep community heritage.
+          <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.4rem', color: '#bfdbfe' }}>Junda United FC</h3>
+          <p style={{ color: '#94a3b8', lineHeight: '1.6', fontSize: '0.9rem' }}>
+            Pride of Mishomoroni. Forging talent, discipline, and community spirit on and off the pitch.
           </p>
         </div>
 
-        {/* CLUB NAVIGATION */}
+        {/* Quick Links Column */}
         <div>
-          <h4 style={{ color: '#2b6cb0', textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '0.1em', marginBottom: '1.2rem' }}>The Club</h4>
-          <ul style={{ listStyle: 'none', padding: '0', margin: '0', fontSize: '0.95rem' }}>
-            <li style={{ marginBottom: '0.6rem' }}><Link to="/" style={{ color: '#cbd5e0', textDecoration: 'none' }}>Latest News</Link></li>
-            <li style={{ marginBottom: '0.6rem' }}><Link to="/squad" style={{ color: '#cbd5e0', textDecoration: 'none' }}>First Team Roster</Link></li>
-            <li style={{ marginBottom: '0.6rem' }}><Link to="/gallery" style={{ color: '#cbd5e0', textDecoration: 'none' }}>Media Gallery</Link></li>
-            <li style={{ marginBottom: '0.6rem' }}><Link to="/admin" style={{ color: '#cbd5e0', textDecoration: 'none' }}>Staff Portal</Link></li>
+          <h4 style={{ margin: '0 0 1rem 0', color: '#fff', textTransform: 'uppercase', fontSize: '0.95rem', letterSpacing: '0.05em' }}>Explore</h4>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <li><Link to="/" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color='#fff'} onMouseOut={e => e.target.style.color='#94a3b8'}>Club News</Link></li>
+            <li><Link to="/fixtures" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color='#fff'} onMouseOut={e => e.target.style.color='#94a3b8'}>Match Centre</Link></li>
+            <li><Link to="/squad" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color='#fff'} onMouseOut={e => e.target.style.color='#94a3b8'}>First Team Squad</Link></li>
+            <li><Link to="/gallery" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color='#fff'} onMouseOut={e => e.target.style.color='#94a3b8'}>Media Gallery</Link></li>
           </ul>
         </div>
 
-        {/* MATCHDAY / FAN ZONE */}
+        {/* Contact Column */}
         <div>
-          <h4 style={{ color: '#2b6cb0', textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '0.1em', marginBottom: '1.2rem' }}>Matchday Hub</h4>
-          <p style={{ color: '#cbd5e0', fontSize: '0.9rem', margin: '0 0 0.5rem 0' }}>**Home Ground:** Junda Grounds, Mishomoroni</p>
-          <p style={{ color: '#cbd5e0', fontSize: '0.9rem', margin: '0 0 0.5rem 0' }}>**Matches:** Coast Regional League fixtures</p>
-          <span style={{ display: 'inline-block', marginTop: '0.5rem', padding: '0.25rem 0.75rem', background: '#2b6cb0', color: '#fff', fontSize: '0.75rem', borderRadius: '4px', fontWeight: 'bold' }}>
-            #UpUnited
-          </span>
+          <h4 style={{ margin: '0 0 1rem 0', color: '#fff', textTransform: 'uppercase', fontSize: '0.95rem', letterSpacing: '0.05em' }}>Contact Us</h4>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem', color: '#94a3b8', fontSize: '0.9rem' }}>
+            <li>📍 Junda Grounds, Mishomoroni</li>
+            <li>📧 jundaunited6@gmail.com</li>
+            <li>📞 +254 798 924 762</li>
+          </ul>
         </div>
 
-        {/* PARTNERS / COMMUNITY INTEGRATION */}
+        {/* 🎯 NEW: Social Media Column */}
         <div>
-          <h4 style={{ color: '#2b6cb0', textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '0.1em', marginBottom: '1.2rem' }}>Community Pride</h4>
-          <p style={{ color: '#a0aec0', fontSize: '0.9rem', lineHeight: '1.6' }}>
-            Interested in partnering or sponsoring Junda United FC initiatives? Reach out directly via our executive management desk.
-          </p>
-        </div>
+          <h4 style={{ margin: '0 0 1rem 0', color: '#fff', textTransform: 'uppercase', fontSize: '0.95rem', letterSpacing: '0.05em' }}>Follow Us</h4>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            
+            {/*YOUR_FACEBOOK_LINK_HERE with your actual URL (e.g. "https://facebook.com/jundaunited") */}
+            <li>
+              <a href="https://web.facebook.com/profile.php?id=100063770437523&sk=directory_links" target="_blank" rel="noopener noreferrer" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onMouseOver={e => e.target.style.color='#fff'} onMouseOut={e => e.target.style.color='#94a3b8'}>
+                📘 Facebook
+              </a>
+            </li>
 
+            {/* YOUR_X_LINK_HERE with your actual URL 
+            <li>
+              <a href="YOUR_X_LINK_HERE" target="_blank" rel="noopener noreferrer" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onMouseOver={e => e.target.style.color='#fff'} onMouseOut={e => e.target.style.color='#94a3b8'}>
+                𝕏 X (Twitter)
+              </a>
+            </li>
+            */}
+            {/* Replace YOUR_INSTAGRAM_LINK_HERE with your actual URL 
+            <li>
+              <a href="YOUR_INSTAGRAM_LINK_HERE" target="_blank" rel="noopener noreferrer" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onMouseOver={e => e.target.style.color='#fff'} onMouseOut={e => e.target.style.color='#94a3b8'}>
+                📸 Instagram
+              </a>
+            </li>
+            */}
+          </ul>
+        </div>
       </div>
 
-      {/* LOWER CREDITS STRIP */}
-      <div style={{ maxWidth: '1200px', margin: '3rem auto 0 auto', padding: '1.5rem 1.5rem 0 1.5rem', borderTop: '1px solid #2d3748', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem', color: '#718096' }}>
-        <p style={{ margin: '0.5rem 0' }}>&copy; {currentYear} Junda United Football Club. All Rights Reserved.</p>
-        <div style={{ display: 'flex', gap: '1.5rem' }}>
-          <span>Mombasa, Kenya</span>
-          <span>Official Team Platform</span>
-        </div>
+      <div style={{ textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>
+        &copy; {year} Junda United Football Club. All rights reserved.
       </div>
     </footer>
   );
