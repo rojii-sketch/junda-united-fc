@@ -211,6 +211,19 @@ app.post('/api/admin/login', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// PUT (Update) a player's profile
+app.put('/api/players/:id', async (req, res) => {
+  try {
+    const updatedPlayer = await Player.findByIdAndUpdate(
+      req.params.id, 
+      req.body, 
+      { new: true } // This tells MongoDB to return the updated document, not the old one
+    );
+    res.json(updatedPlayer);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 // ==========================================================
 // 📸 CLOUDINARY IMAGE UPLOAD ENDPOINT (With Network Optimization)
 // ==========================================================
