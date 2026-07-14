@@ -16,7 +16,10 @@ export default function Admin({
   const [showPassword, setShowPassword] = useState(false);
 
   const [newsForm, setNewsForm] = useState({ title: '', content: '', imageUrl: '', date: '' });
-  const [playerForm, setPlayerForm] = useState({ name: '', position: '', jerseyNumber: '', role: 'player', image: '' });
+const [playerForm, setPlayerForm] = useState({ 
+  name: '', position: '', jerseyNumber: '', role: 'player', image: '',
+  age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '' 
+});
   const [galleryForm, setGalleryForm] = useState({ type: 'image', url: '', caption: '' });
 
   const [fixtureForm, setFixtureForm] = useState({
@@ -526,17 +529,76 @@ export default function Admin({
         </div>
       )}
 
-      {/* --- SQUAD SECTION --- */}
+     {/* --- SQUAD SECTION --- */}
       {activeTab === 'squad' && (
         <div className="admin-panel" style={panelStyle}>
           <form onSubmit={handleAddPlayer} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
             <h3>Add Roster Member</h3>
-            <div className="form-group"><label>Full Name</label><input type="text" placeholder="e.g. Marcus Vance" value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} /></div>
-            <div className="form-group"><label>Position</label><input type="text" placeholder="e.g. Forward" value={playerForm.position} onChange={e => setPlayerForm({...playerForm, position: e.target.value})} /></div>
-            <div className="form-group"><label>Jersey Number</label><input type="text" placeholder="Leave blank if staff" value={playerForm.jerseyNumber} onChange={e => setPlayerForm({...playerForm, jerseyNumber: e.target.value})} /></div>
-            <div className="form-group"><label>Profile Photo</label><input type="file" accept="image/*" onChange={e => handleFileUpload(e, 'squad')} /></div>
-            <div className="form-group"><label>Club Role</label><select value={playerForm.role} onChange={e => setPlayerForm({...playerForm, role: e.target.value})}><option value="player">First Team Player</option><option value="coach">Coaching Staff</option></select></div>
-            <button type="submit" className="submit-btn" disabled={isUploading}>Add to Roster</button>
+            
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+              <div className="form-group" style={{ flex: '2 1 200px' }}><label>Full Name</label><input type="text" placeholder="e.g. Marcus Vance" value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} /></div>
+              <div className="form-group" style={{ flex: '1 1 150px' }}><label>Position</label><input type="text" placeholder="e.g. Striker" value={playerForm.position} onChange={e => setPlayerForm({...playerForm, position: e.target.value})} /></div>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+              <div className="form-group" style={{ flex: '1 1 100px' }}><label>Jersey #</label><input type="text" placeholder="e.g. 10" value={playerForm.jerseyNumber} onChange={e => setPlayerForm({...playerForm, jerseyNumber: e.target.value})} /></div>
+              <div className="form-group" style={{ flex: '1 1 100px' }}><label>Age</label><input type="number" placeholder="e.g. 21" value={playerForm.age} onChange={e => setPlayerForm({...playerForm, age: e.target.value})} /></div>
+              <div className="form-group" style={{ flex: '1 1 100px' }}><label>Apps</label><input type="number" value={playerForm.appearances} onChange={e => setPlayerForm({...playerForm, appearances: e.target.value})} /></div>
+              <div className="form-group" style={{ flex: '1 1 100px' }}><label>Goals</label><input type="number" value={playerForm.goals} onChange={e => setPlayerForm({...playerForm, goals: e.target.value})} /></div>
+            </div>
+
+            <div className="form-group"><label>Short Bio</label><textarea rows="2" placeholder="Brief player history..." value={playerForm.bio} onChange={e => setPlayerForm({...playerForm, bio: e.target.value})}></textarea></div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+              <div className="form-group" style={{ flex: '1 1 150px' }}><label>Squad Category</label>
+                <select value={playerForm.squadCategory} onChange={e => setPlayerForm({...playerForm, squadCategory: e.target.value})}>
+                  <option value="First Team">First Team</option>
+                  <option value="Under 17">Under 17 (U-17)</option>
+                  <option value="Under 13">Under 13 (U-13)</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ flex: '1 1 150px' }}><label>Club Role</label>
+                <select value={playerForm.role} onChange={e => setPlayerForm({...playerForm, role: e.target.value})}>
+                  <option value="player">Player</option>
+                  <option value="coach">Coach / Staff</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ flex: '1 1 200px' }}><label>Profile Photo</label><input type="file" accept="image/*" onChange={e => handleFileUpload(e, 'squad')} /></div>
+            </div>
+
+            <button 
+              type="submit" 
+              className="submit-btn" 
+              disabled={isUploading} 
+              style={{ 
+                background: '#2563eb', 
+                color: '#fff', 
+                width: '100%', 
+                padding: '0.85rem', 
+                fontSize: '1.1rem', 
+                fontWeight: 'bold', 
+                borderRadius: '8px', 
+                border: 'none', 
+                cursor: 'pointer', 
+                transition: 'all 0.2s ease', 
+                marginTop: '1rem',
+                boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = '#1d4ed8';
+                e.target.style.boxShadow = '0 6px 14px rgba(37, 99, 235, 0.4)';
+                e.target.style.transform = 'translateY(-2px)';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = '#2563eb';
+                e.target.style.boxShadow = '0 4px 10px rgba(37, 99, 235, 0.3)';
+                e.target.style.transform = 'translateY(0)';
+              }}
+              onMouseDown={(e) => e.target.style.transform = 'scale(0.98)'}
+              onMouseUp={(e) => e.target.style.transform = 'translateY(-2px)'}
+            >
+              ➕ Register to Roster
+            </button>
           </form>
 
           <div style={listContainerStyle}>
@@ -545,7 +607,9 @@ export default function Admin({
               <div key={item._id} style={listRowStyle}>
                 <div style={{ flex: '1 1 200px' }}>
                   <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.name}</strong>
-                  <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.position} • <span className="role-tag">{item.role}</span></p>
+                  <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>
+                    {item.position} • <span className="role-tag">{item.role === 'coach' ? 'Staff' : item.squadCategory}</span>
+                  </p>
                 </div>
                 <button className="delete-btn" onClick={() => deleteItem(item._id, 'players')}>Delete</button>
               </div>
