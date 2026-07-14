@@ -16,21 +16,15 @@ export default function Admin({
   const [showPassword, setShowPassword] = useState(false);
 
   const [newsForm, setNewsForm] = useState({ title: '', content: '', imageUrl: '', date: '' });
-const [playerForm, setPlayerForm] = useState({ 
-  name: '', position: '', jerseyNumber: '', role: 'player', image: '',
-  age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' 
-});
+  const [playerForm, setPlayerForm] = useState({ 
+    name: '', position: '', jerseyNumber: '', role: 'player', image: '',
+    age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' 
+  });
   const [galleryForm, setGalleryForm] = useState({ type: 'image', url: '', caption: '' });
 
   const [fixtureForm, setFixtureForm] = useState({
-    opponent: '',
-    matchDate: '',
-    kickoffTime: '16:00 EAT',
-    venue: 'Junda Grounds, Mishomoroni',
-    status: 'Upcoming',
-    jundaScore: 0,
-    opponentScore: 0,
-    isHomeMatch: true
+    opponent: '', matchDate: '', kickoffTime: '16:00 EAT', venue: 'Junda Grounds, Mishomoroni',
+    status: 'Upcoming', jundaScore: 0, opponentScore: 0, isHomeMatch: true
   });
 
   const [standingForm, setStandingForm] = useState({
@@ -39,6 +33,7 @@ const [playerForm, setPlayerForm] = useState({
 
   const [isUploading, setIsUploading] = useState(false);
   const [editingNewsId, setEditingNewsId] = useState(null);
+  const [editingPlayerId, setEditingPlayerId] = useState(null);
 
   const handleFileUpload = async (e, formType) => {
     const file = e.target.files[0];
@@ -170,22 +165,60 @@ const [playerForm, setPlayerForm] = useState({
     e.preventDefault();
     if (!playerForm.name || !playerForm.position) return alert('Name and Position are required!');
     
-    try {
-      const response = await fetch(`${API_BASE}/players`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(playerForm)
-      });
-      if (response.ok) {
-        const savedPlayer = await response.json();
-        setPlayers([...players, savedPlayer]);
-        setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '' });
-        alert('Squad member registered successfully!');
+    if (editingPlayerId) {
+      try {
+        const response = await fetch(`${API_BASE}/players/${editingPlayerId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(playerForm)
+        });
+        if (response.ok) {
+          const updatedPlayer = await response.json();
+          setPlayers(players.map(p => p._id === editingPlayerId ? updatedPlayer : p));
+          setEditingPlayerId(null);
+          setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '', age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' });
+          alert('Squad member updated successfully!');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Failed to update roster member.');
       }
-    } catch (err) {
-      console.error(err);
-      alert('Failed to add roster member.');
+    } else {
+      try {
+        const response = await fetch(`${API_BASE}/players`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(playerForm)
+        });
+        if (response.ok) {
+          const savedPlayer = await response.json();
+          setPlayers([...players, savedPlayer]);
+          setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '', age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' });
+          alert('Squad member registered successfully!');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Failed to add roster member.');
+      }
     }
+  };
+
+  const startEditPlayer = (item) => {
+    setEditingPlayerId(item._id);
+    setPlayerForm({
+      name: item.name,
+      position: item.position,
+      jerseyNumber: item.jerseyNumber || '',
+      role: item.role,
+      image: item.image || '',
+      age: item.age || '',
+      squadCategory: item.squadCategory || 'First Team',
+      appearances: item.appearances || 0,
+      goals: item.goals || 0,
+      bio: item.bio || '',
+      contact: item.contact || ''
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAddGallery = async (e) => {
@@ -231,14 +264,8 @@ const [playerForm, setPlayerForm] = useState({
         const savedFixture = await response.json();
         setFixtures([savedFixture, ...fixtures]);
         setFixtureForm({
-          opponent: '',
-          matchDate: '',
-          kickoffTime: '16:00 EAT',
-          venue: 'Junda Grounds, Mishomoroni',
-          status: 'Upcoming',
-          jundaScore: 0,
-          opponentScore: 0,
-          isHomeMatch: true
+          opponent: '', matchDate: '', kickoffTime: '16:00 EAT', venue: 'Junda Grounds, Mishomoroni',
+          status: 'Upcoming', jundaScore: 0, opponentScore: 0, isHomeMatch: true
         });
         alert('🏅 Match context logged successfully!');
       }
@@ -257,15 +284,9 @@ const [playerForm, setPlayerForm] = useState({
       : [];
     
     const payload = {
-      name: standingForm.name,
-      rank: Number(standingForm.rank) || 1,
-      p: Number(standingForm.p) || 0,
-      w: Number(standingForm.w) || 0,
-      d: Number(standingForm.d) || 0,
-      l: Number(standingForm.l) || 0,
-      gf: Number(standingForm.gf) || 0,
-      ga: Number(standingForm.ga) || 0,
-      pts: Number(standingForm.pts) || 0,
+      name: standingForm.name, rank: Number(standingForm.rank) || 1, p: Number(standingForm.p) || 0,
+      w: Number(standingForm.w) || 0, d: Number(standingForm.d) || 0, l: Number(standingForm.l) || 0,
+      gf: Number(standingForm.gf) || 0, ga: Number(standingForm.ga) || 0, pts: Number(standingForm.pts) || 0,
       form: parsedForm
     };
 
@@ -309,11 +330,8 @@ const [playerForm, setPlayerForm] = useState({
       });
 
       if (response.ok) {
-        if (type === 'news') {
-          setNews(news.filter(item => item._id !== id));
-          if (editingNewsId === id) setEditingNewsId(null);
-        }
-        if (type === 'players') setPlayers(players.filter(item => item._id !== id));
+        if (type === 'news') { setNews(news.filter(item => item._id !== id)); if (editingNewsId === id) setEditingNewsId(null); }
+        if (type === 'players') { setPlayers(players.filter(item => item._id !== id)); if (editingPlayerId === id) setEditingPlayerId(null); }
         if (type === 'gallery') setGallery(gallery.filter(item => item._id !== id));
         if (type === 'fixtures') setFixtures(fixtures.filter(item => item._id !== id));
         if (type === 'standings') setStandings(standings.filter(item => item._id !== id)); 
@@ -330,24 +348,12 @@ const [playerForm, setPlayerForm] = useState({
       <div className="page-container" style={{ maxWidth: '400px', marginTop: '5rem' }}>
         <form onSubmit={handleLogin} className="admin-form">
           <h3>Junda UI Secure Gateway</h3>
+          <div className="form-group"><label>Username</label><input type="text" placeholder="Username" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} /></div>
           <div className="form-group">
-            <label htmlFor="admin-user">Username</label>
-            <input id="admin-user" type="text" placeholder="Username" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} />
-          </div>
-          <div className="form-group">
-            <label htmlFor="admin-pass">Security Password</label>
+            <label>Security Password</label>
             <div className="password-input-wrapper">
-              <input 
-                id="admin-pass" 
-                type={showPassword ? "text" : "password"} 
-                placeholder="••••••••" 
-                value={passwordInput} 
-                onChange={e => setPasswordInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e); }}
-              />
-              <button type="button" className="toggle-password-btn" onClick={() => setShowPassword(!showPassword)}>
-                {showPassword ? "Hide" : "Show"}
-              </button>
+              <input type={showPassword ? "text" : "password"} placeholder="••••••••" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e); }} />
+              <button type="button" className="toggle-password-btn" onClick={() => setShowPassword(!showPassword)}>{showPassword ? "Hide" : "Show"}</button>
             </div>
           </div>
           <button type="submit" className="submit-btn">Unlock Dashboard</button>
@@ -356,7 +362,6 @@ const [playerForm, setPlayerForm] = useState({
     );
   }
 
-  // 🎯 RESPONSIVE STYLES (Forces full-width stacking so nothing gets squeezed)
   const panelStyle = { display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' };
   const listContainerStyle = { width: '100%', boxSizing: 'border-box', maxHeight: '450px', overflowY: 'auto', overflowX: 'hidden', background: '#f1f5f9', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' };
   const listHeaderStyle = { position: 'sticky', top: '-1.25rem', background: '#f1f5f9', paddingTop: '1rem', paddingBottom: '0.75rem', marginTop: 0, marginBottom: '1rem', borderBottom: '2px solid #e2e8f0', zIndex: 10 };
@@ -393,6 +398,9 @@ const [playerForm, setPlayerForm] = useState({
             <div className="form-group"><label>Publish Date (Optional)</label><input type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} /></div>
             <div className="form-group"><label>Article Content</label><textarea placeholder="Write article text here..." rows="4" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea></div>
             <button type="submit" className="submit-btn">{editingNewsId ? "Save Changes" : "Publish Post"}</button>
+            {editingNewsId && (
+              <button type="button" onClick={() => { setEditingNewsId(null); setNewsForm({ title: '', content: '', imageUrl: '', date: '' }); }} style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>Cancel Edit</button>
+            )}
           </form>
           
           <div style={listContainerStyle}>
@@ -463,7 +471,6 @@ const [playerForm, setPlayerForm] = useState({
               <div className="form-group" style={{ flex: '2 1 200px' }}><label>Club Name</label><input type="text" placeholder="e.g. Junda United FC" value={standingForm.name} onChange={e => setStandingForm({...standingForm, name: e.target.value})} required /></div>
             </div>
             
-            {/* Switched to responsive flex grids so they stack nicely on small screens */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '0.5rem' }}>
               <div className="form-group"><label>P</label><input type="number" value={standingForm.p} onChange={e => setStandingForm({...standingForm, p: e.target.value})} /></div>
               <div className="form-group"><label>W</label><input type="number" value={standingForm.w} onChange={e => setStandingForm({...standingForm, w: e.target.value})} /></div>
@@ -478,36 +485,11 @@ const [playerForm, setPlayerForm] = useState({
             <button 
               type="submit" 
               className="submit-btn" 
-              style={{ 
-                background: '#10b981', 
-                color: '#fff', 
-                width: '100%', 
-                padding: '0.85rem', 
-                fontSize: '1.1rem', 
-                fontWeight: 'bold', 
-                borderRadius: '8px',
-                boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)',
-                marginTop: '1rem',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.background = '#059669';
-                e.target.style.boxShadow = '0 6px 14px rgba(16, 185, 129, 0.4)';
-                e.target.style.transform = 'translateY(-2px)';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.background = '#10b981';
-                e.target.style.boxShadow = '0 4px 10px rgba(16, 185, 129, 0.3)';
-                e.target.style.transform = 'translateY(0)';
-              }}
-              onMouseDown={(e) => {
-                e.target.style.transform = 'scale(0.98)';
-              }}
-              onMouseUp={(e) => {
-                e.target.style.transform = 'translateY(-2px)';
-              }}
+              style={{ background: '#10b981', color: '#fff', width: '100%', padding: '0.85rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', transition: 'all 0.2s ease', marginTop: '1rem' }}
+              onMouseOver={(e) => { e.target.style.background = '#059669'; e.target.style.transform = 'translateY(-2px)'; }}
+              onMouseOut={(e) => { e.target.style.background = '#10b981'; e.target.style.transform = 'translateY(0)'; }}
+              onMouseDown={(e) => { e.target.style.transform = 'scale(0.98)'; }}
+              onMouseUp={(e) => { e.target.style.transform = 'translateY(-2px)'; }}
             >
               💾 Save Team Metrics
             </button>
@@ -529,11 +511,11 @@ const [playerForm, setPlayerForm] = useState({
         </div>
       )}
 
-     {/* --- SQUAD SECTION --- */}
+      {/* --- SQUAD SECTION --- */}
       {activeTab === 'squad' && (
         <div className="admin-panel" style={panelStyle}>
           <form onSubmit={handleAddPlayer} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
-            <h3>Add Roster Member</h3>
+            <h3>{editingPlayerId ? "📝 Edit Roster Member" : "Add Roster Member"}</h3>
             
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
               <div className="form-group" style={{ flex: '2 1 200px' }}><label>Full Name</label><input type="text" placeholder="e.g. Marcus Vance" value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} /></div>
@@ -548,6 +530,7 @@ const [playerForm, setPlayerForm] = useState({
             </div>
 
             <div className="form-group"><label>Short Bio</label><textarea rows="2" placeholder="Brief player history..." value={playerForm.bio} onChange={e => setPlayerForm({...playerForm, bio: e.target.value})}></textarea></div>
+            <div className="form-group"><label>Contact Info (Email/Phone for Staff)</label><input type="text" placeholder="e.g. coach@jundaunited.com or +254..." value={playerForm.contact} onChange={e => setPlayerForm({...playerForm, contact: e.target.value})} /></div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
               <div className="form-group" style={{ flex: '1 1 150px' }}><label>Squad Category</label>
@@ -570,35 +553,23 @@ const [playerForm, setPlayerForm] = useState({
               type="submit" 
               className="submit-btn" 
               disabled={isUploading} 
-              style={{ 
-                background: '#2563eb', 
-                color: '#fff', 
-                width: '100%', 
-                padding: '0.85rem', 
-                fontSize: '1.1rem', 
-                fontWeight: 'bold', 
-                borderRadius: '8px', 
-                border: 'none', 
-                cursor: 'pointer', 
-                transition: 'all 0.2s ease', 
-                marginTop: '1rem',
-                boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.background = '#1d4ed8';
-                e.target.style.boxShadow = '0 6px 14px rgba(37, 99, 235, 0.4)';
-                e.target.style.transform = 'translateY(-2px)';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.background = '#2563eb';
-                e.target.style.boxShadow = '0 4px 10px rgba(37, 99, 235, 0.3)';
-                e.target.style.transform = 'translateY(0)';
-              }}
+              style={{ background: '#2563eb', color: '#fff', width: '100%', padding: '0.85rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', transition: 'all 0.2s ease', marginTop: '1rem' }}
+              onMouseOver={(e) => { e.target.style.background = '#1d4ed8'; e.target.style.transform = 'translateY(-2px)'; }}
+              onMouseOut={(e) => { e.target.style.background = '#2563eb'; e.target.style.transform = 'translateY(0)'; }}
               onMouseDown={(e) => e.target.style.transform = 'scale(0.98)'}
               onMouseUp={(e) => e.target.style.transform = 'translateY(-2px)'}
             >
-              ➕ Register to Roster
+              {editingPlayerId ? "💾 Save Changes" : "➕ Register to Roster"}
             </button>
+            {editingPlayerId && (
+              <button 
+                type="button" 
+                onClick={() => { setEditingPlayerId(null); setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '', age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' }); }} 
+                style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+              >
+                Cancel Edit
+              </button>
+            )}
           </form>
 
           <div style={listContainerStyle}>
@@ -611,7 +582,10 @@ const [playerForm, setPlayerForm] = useState({
                     {item.position} • <span className="role-tag">{item.role === 'coach' ? 'Staff' : item.squadCategory}</span>
                   </p>
                 </div>
-                <button className="delete-btn" onClick={() => deleteItem(item._id, 'players')}>Delete</button>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditPlayer(item)}>Edit</button>
+                  <button type="button" className="delete-btn" onClick={() => deleteItem(item._id, 'players')}>Delete</button>
+                </div>
               </div>
             ))}
             {players.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No squad members added yet.</div>}
