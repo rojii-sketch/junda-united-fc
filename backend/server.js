@@ -1,5 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
+
 import express from 'express';
 import mongoose from 'mongoose';
 import Fixture from './models/Fixture.js'
@@ -12,7 +13,8 @@ import Admin from './models/Admin.js';
 import News from './models/News.js';
 import Player from './models/Player.js';
 import Gallery from './models/Gallery.js';
-
+import NodeCache from 'node-cache';
+const apiCache = new NodeCache({ stdTTL: 300 }); // Data lives in memory for 5 minutes (300 seconds)
 dotenv.config();
 const app = express();
 // Configure Cloudinary
@@ -29,7 +31,44 @@ const upload = multer({ storage });
 // Middleware
 app.use(cors());
 app.use(express.json()); // Allows server to read JSON data bodies sent by React
+// 🛡️ THE MAGIC CACHE SHIELD
+app.use('/api', (req, res, next) => {
+  // 1. We only intercept GET requests (public users loading the site)
+  if (req.method === 'GET') {
+    
+    // Tell Cloudflare, Vercel, and the user's browser to cache this data for 5 minutes!
+    res.set('Cache-Control', 'public, max-age=300');
 
+    const key = req.originalUrl;
+    const cachedData = apiCache.get(key);
+
+    // 🎯 If data is in memory, serve it instantly! (Protects MongoDB)
+    if (cachedData) {
+      console.log(`⚡ FAST LOAD: Serving ${key} from Render Memory`);
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // 🎯 If no cache exists, let the request hit MongoDB, but intercept the result and save it!
+    const originalJson = res.json.bind(res);
+    res.json = (body) => {
+      // Only cache successful requests
+      if (res.statusCode === 200) {
+        apiCache.set(key, JSON.stringify(body));
+        console.log(`💾 DB READ: Saved ${key} to Render Memory`);
+      }
+      originalJson(body);
+    };
+    next();
+  } else {
+    
+    // This ensures your fans see your updates the second you hit "Save".
+    if (req.originalUrl.includes('/api/')) {
+       console.log('🧹 ADMIN UPDATE DETECTED: Wiping Cache to pull fresh data');
+       apiCache.flushAll();
+    }
+    next();
+  }
+});
 // Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('🚀 Connected smoothly to MongoDB Atlas Cloud Database'))
