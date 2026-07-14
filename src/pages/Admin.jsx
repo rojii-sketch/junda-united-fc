@@ -18,7 +18,7 @@ export default function Admin({
   const [newsForm, setNewsForm] = useState({ title: '', content: '', imageUrl: '', date: '' });
 const [playerForm, setPlayerForm] = useState({ 
   name: '', position: '', jerseyNumber: '', role: 'player', image: '',
-  age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '' 
+  age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' 
 });
   const [galleryForm, setGalleryForm] = useState({ type: 'image', url: '', caption: '' });
 
