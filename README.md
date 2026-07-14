@@ -1,27 +1,56 @@
-# Junda United FC - Official Portal
+# ⚽ Junda United FC - Official Web Platform
 
-A responsive, lightweight football club management system designed to showcase club news, match media, and team rosters, with a secure, password-protected administrative dashboard for real-time updates.
+The official digital home for Junda United Football Club, the pride of Mishomoroni. This full-stack web application serves as a dynamic portal for fans and a comprehensive club management system for administrators.
 
-## 🚀 Features
+## 🚀 Live Demo
+* **Frontend:** (https://junda-united-fc.vercel.app/)
 
-*   **Dynamic News Feed:** Users can view the latest club updates, sortable by date.
-*   **Media Gallery:** Supports both image and video content with a responsive grid layout.
-*   **Team Roster:** Categorized display for Players, Coaching Staff, and Medical Support.
-*   **Secure Admin Panel:** A hidden, password-protected control panel (`/admin`) for club officials to Create, Update, and Delete content.
-*   **Mobile-First Design:** Fully responsive layout optimized for smartphones, tablets, and desktops.
-*   **Persistence:** Built-in `localStorage` synchronization so data persists across browser refreshes without the need for a server-side database.
 
-## 🛠 Tech Stack
+---
 
-*   **Frontend:** React (Vite)
-*   **Routing:** React Router DOM
-*   **Styling:** Custom CSS (Flexbox & CSS Grid)
-*   **Storage:** Browser `localStorage` (Client-side persistence)
-*   **Deployment:** Vercel
+## 🛠️ Tech Stack & Architecture
 
-## 📦 Setup & Installation
+**Frontend:**
+* React.js (Hooks, functional components)
+* React Router DOM (Client-side routing)
+* Pure CSS (Responsive CSS Grid and Flexbox layouts)
 
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/rojii-sketch/junda-united-fc.git](https://github.com/rojii-sketch/junda-united-fc.git)
-   cd junda-united-fc
+**Backend:**
+* Node.js & Express.js (RESTful API)
+* MongoDB Atlas & Mongoose (NoSQL Database)
+* Cloudinary (Cloud-based media storage)
+* `node-cache` (In-memory caching layer)
+
+**Hosting & Delivery:**
+* Vercel (Global Edge Network CDN for frontend)
+* Render (Backend hosting)
+
+---
+
+## ✨ Key Features
+
+* **Dynamic Match Centre:** Real-time updates for upcoming fixtures, completed match results, and a fully interactive League Standings table with form history (W-D-L).
+* **Integrated Youth System:** Advanced roster categorization dynamically routing players into First Team, Under-17, and Under-13 academy squads.
+* **Extended Player Profiles:** Comprehensive stats tracking including appearances, goals, age, custom biographies, and staff contact routing.
+* **Media Gallery:** Cloudinary-backed upload stream for match highlights and club photos.
+* **Secure Admin Dashboard:** Protected gateway allowing club managers to execute full CRUD (Create, Read, Update, Delete) operations across all data sets without touching code.
+
+---
+
+## 🛡️ Performance & Scaling (The Cache Shield)
+
+To handle massive traffic spikes (100,000+ visitors) without crashing the free-tier MongoDB cluster, this API implements a **Dual-Layer Caching Strategy**:
+
+1. **Memory Cache:** The Express server utilizes `node-cache` to store database queries in local memory for 10-minute (600s) intervals, dropping database reads by 99% during traffic spikes.
+2. **Global CDN Headers:** The API attaches `Cache-Control: public, max-age=600` headers to all `GET` requests, instructing Vercel's global edge network and user browsers to serve data directly from cache.
+3. **Auto-Purge:** Executing any `PUT`, `POST`, or `DELETE` request from the Admin panel triggers an automatic `apiCache.flushAll()`, instantly shattering the cache to deliver fresh updates to fans.
+
+---
+
+## 💻 Local Development Setup
+
+To run this project locally on your machine:
+
+**1. Clone the repository**
+```bash
+git clone [https://github.com/rojii-sketch/junda-united-fc.git](https://github.com/rojii-sketch/junda-united-fc.git)
