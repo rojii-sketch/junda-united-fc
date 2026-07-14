@@ -1,5 +1,5 @@
 // src/pages/Admin.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Admin({ 
   news, setNews, 
@@ -10,7 +10,11 @@ export default function Admin({
   API_BASE 
 }) {
   const [activeTab, setActiveTab] = useState('news');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  
+  // 🎯 JWT Authentication State
+  const [adminToken, setAdminToken] = useState(sessionStorage.getItem('junda_jwt') || null);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem('junda_jwt'));
+  
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,12 +25,10 @@ export default function Admin({
     age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' 
   });
   const [galleryForm, setGalleryForm] = useState({ type: 'image', url: '', caption: '' });
-
   const [fixtureForm, setFixtureForm] = useState({
     opponent: '', matchDate: '', kickoffTime: '16:00 EAT', venue: 'Junda Grounds, Mishomoroni',
     status: 'Upcoming', jundaScore: 0, opponentScore: 0, isHomeMatch: true
   });
-
   const [standingForm, setStandingForm] = useState({
     rank: 1, name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W'
   });
@@ -34,6 +36,48 @@ export default function Admin({
   const [isUploading, setIsUploading] = useState(false);
   const [editingNewsId, setEditingNewsId] = useState(null);
   const [editingPlayerId, setEditingPlayerId] = useState(null);
+
+  // 🎯 Helper function to get authorization headers
+  const getAuthHeaders = (isJson = true) => {
+    const headers = { 'Authorization': `Bearer ${adminToken}` };
+    if (isJson) headers['Content-Type'] = 'application/json';
+    return headers;
+  };
+
+  const handleLogin = async (e) => {
+    if (e) e.preventDefault();
+    if (!usernameInput || !passwordInput) return alert('Both username and password are required!');
+    
+    try {
+      const response = await fetch(`${API_BASE}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: usernameInput, password: passwordInput })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Save the JWT token!
+        setAdminToken(data.token);
+        sessionStorage.setItem('junda_jwt', data.token);
+        setIsAuthenticated(true);
+        alert('🔒 Session Authenticated Successfully!');
+      } else {
+        alert(data.message || 'Access Denied. Incorrect username or password.');
+        setPasswordInput('');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Server error trying to authenticate.');
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('junda_jwt');
+    setAdminToken(null);
+    setIsAuthenticated(false);
+  };
 
   const handleFileUpload = async (e, formType) => {
     const file = e.target.files[0];
@@ -46,6 +90,7 @@ export default function Admin({
     try {
       const response = await fetch(`${API_BASE}/upload`, {
         method: 'POST',
+        headers: getAuthHeaders(false), // 🎯 Attach VIP Pass (no JSON content type for files)
         body: formData,
       });
 
@@ -66,48 +111,16 @@ export default function Admin({
     }
   };
 
-  const handleLogin = async (e) => {
-    if (e) e.preventDefault();
-    if (!usernameInput || !passwordInput) return alert('Both username and password are required!');
-    
-    try {
-      const response = await fetch(`${API_BASE}/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: usernameInput, password: passwordInput })
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setIsAuthenticated(true);
-        alert('🔒 Session Authenticated Successfully!');
-      } else {
-        alert(data.message || 'Access Denied. Incorrect username or password.');
-        setPasswordInput('');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Server error trying to authenticate.');
-    }
-  };
-
   const handleAddNews = async (e) => {
     e.preventDefault();
     if (!newsForm.title || !newsForm.content) return alert('Title and Content are required!');
     
     if (editingNewsId) {
       try {
-        const updatePayload = {
-          title: newsForm.title,
-          content: newsForm.content,
-          imageUrl: newsForm.imageUrl,
-          date: newsForm.date
-        };
-
+        const updatePayload = { title: newsForm.title, content: newsForm.content, imageUrl: newsForm.imageUrl, date: newsForm.date };
         const response = await fetch(`${API_BASE}/news/${editingNewsId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(), // 🎯 Attach VIP Pass
           body: JSON.stringify(updatePayload)
         });
 
@@ -117,23 +130,18 @@ export default function Admin({
           setEditingNewsId(null);
           setNewsForm({ title: '', content: '', imageUrl: '', date: '' });
           alert('Article updated smoothly on cloud database!');
+        } else {
+          alert('Failed to update: Session may have expired. Please log in again.');
         }
       } catch (err) {
-        console.error(err);
-        alert('Failed to update article.');
+        console.error(err); alert('Failed to update article.');
       }
     } else {
-      const newArticle = {
-        title: newsForm.title,
-        content: newsForm.content,
-        imageUrl: newsForm.imageUrl,
-        date: newsForm.date || new Date().toISOString().split('T')[0]
-      };
-
+      const newArticle = { title: newsForm.title, content: newsForm.content, imageUrl: newsForm.imageUrl, date: newsForm.date || new Date().toISOString().split('T')[0] };
       try {
         const response = await fetch(`${API_BASE}/news`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(), // 🎯 Attach VIP Pass
           body: JSON.stringify(newArticle)
         });
 
@@ -144,20 +152,14 @@ export default function Admin({
           alert('Article published cleanly to cloud database!');
         }
       } catch (err) {
-        console.error(err);
-        alert('Failed to save article.');
+        console.error(err); alert('Failed to save article.');
       }
     }
   };
 
   const startEditNews = (item) => {
     setEditingNewsId(item._id);
-    setNewsForm({
-      title: item.title,
-      content: item.content,
-      imageUrl: item.imageUrl || '',
-      date: item.date
-    });
+    setNewsForm({ title: item.title, content: item.content, imageUrl: item.imageUrl || '', date: item.date });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -169,7 +171,7 @@ export default function Admin({
       try {
         const response = await fetch(`${API_BASE}/players/${editingPlayerId}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(), // 🎯 Attach VIP Pass
           body: JSON.stringify(playerForm)
         });
         if (response.ok) {
@@ -180,14 +182,13 @@ export default function Admin({
           alert('Squad member updated successfully!');
         }
       } catch (err) {
-        console.error(err);
-        alert('Failed to update roster member.');
+        console.error(err); alert('Failed to update roster member.');
       }
     } else {
       try {
         const response = await fetch(`${API_BASE}/players`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(), // 🎯 Attach VIP Pass
           body: JSON.stringify(playerForm)
         });
         if (response.ok) {
@@ -197,8 +198,7 @@ export default function Admin({
           alert('Squad member registered successfully!');
         }
       } catch (err) {
-        console.error(err);
-        alert('Failed to add roster member.');
+        console.error(err); alert('Failed to add roster member.');
       }
     }
   };
@@ -206,17 +206,9 @@ export default function Admin({
   const startEditPlayer = (item) => {
     setEditingPlayerId(item._id);
     setPlayerForm({
-      name: item.name,
-      position: item.position,
-      jerseyNumber: item.jerseyNumber || '',
-      role: item.role,
-      image: item.image || '',
-      age: item.age || '',
-      squadCategory: item.squadCategory || 'First Team',
-      appearances: item.appearances || 0,
-      goals: item.goals || 0,
-      bio: item.bio || '',
-      contact: item.contact || ''
+      name: item.name, position: item.position, jerseyNumber: item.jerseyNumber || '', role: item.role,
+      image: item.image || '', age: item.age || '', squadCategory: item.squadCategory || 'First Team',
+      appearances: item.appearances || 0, goals: item.goals || 0, bio: item.bio || '', contact: item.contact || ''
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -224,11 +216,10 @@ export default function Admin({
   const handleAddGallery = async (e) => {
     e.preventDefault();
     if (!galleryForm.url) return alert('Media URL is required!');
-    
     try {
       const response = await fetch(`${API_BASE}/gallery`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(), // 🎯 Attach VIP Pass
         body: JSON.stringify(galleryForm)
       });
       if (response.ok) {
@@ -237,98 +228,71 @@ export default function Admin({
         setGalleryForm({ type: 'image', url: '', caption: '' });
         alert('Media asset uploaded successfully!');
       }
-    } catch (err) {
-      console.error(err);
-      alert('Failed to save gallery asset.');
-    }
+    } catch (err) { console.error(err); alert('Failed to save gallery asset.'); }
   };
 
   const handleAddFixture = async (e) => {
     e.preventDefault();
     if (!fixtureForm.opponent || !fixtureForm.matchDate) return alert('Opponent Name and Match Date are required!');
-
     const submissionPayload = {
       ...fixtureForm,
       jundaScore: fixtureForm.status === 'Completed' ? Number(fixtureForm.jundaScore) : 0,
       opponentScore: fixtureForm.status === 'Completed' ? Number(fixtureForm.opponentScore) : 0,
     };
-
     try {
       const response = await fetch(`${API_BASE}/fixtures`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(), // 🎯 Attach VIP Pass
         body: JSON.stringify(submissionPayload)
       });
-
       if (response.ok) {
         const savedFixture = await response.json();
         setFixtures([savedFixture, ...fixtures]);
-        setFixtureForm({
-          opponent: '', matchDate: '', kickoffTime: '16:00 EAT', venue: 'Junda Grounds, Mishomoroni',
-          status: 'Upcoming', jundaScore: 0, opponentScore: 0, isHomeMatch: true
-        });
+        setFixtureForm({ opponent: '', matchDate: '', kickoffTime: '16:00 EAT', venue: 'Junda Grounds, Mishomoroni', status: 'Upcoming', jundaScore: 0, opponentScore: 0, isHomeMatch: true });
         alert('🏅 Match context logged successfully!');
       }
-    } catch (err) {
-      console.error(err);
-      alert('Failed to record fixture details.');
-    }
+    } catch (err) { console.error(err); alert('Failed to record fixture details.'); }
   };
 
   const handleStandingSubmit = async (e) => {
     e.preventDefault();
     if (!standingForm.name) return alert('Club Name is required!');
-    
-    const parsedForm = standingForm.formInput 
-      ? standingForm.formInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s !== "")
-      : [];
-    
+    const parsedForm = standingForm.formInput ? standingForm.formInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s !== "") : [];
     const payload = {
       name: standingForm.name, rank: Number(standingForm.rank) || 1, p: Number(standingForm.p) || 0,
       w: Number(standingForm.w) || 0, d: Number(standingForm.d) || 0, l: Number(standingForm.l) || 0,
-      gf: Number(standingForm.gf) || 0, ga: Number(standingForm.ga) || 0, pts: Number(standingForm.pts) || 0,
-      form: parsedForm
+      gf: Number(standingForm.gf) || 0, ga: Number(standingForm.ga) || 0, pts: Number(standingForm.pts) || 0, form: parsedForm
     };
-
     try {
       const res = await fetch(`${API_BASE}/standings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(), // 🎯 Attach VIP Pass
         body: JSON.stringify(payload)
       });
-
       if (!res.ok) {
         const errorData = await res.json();
-        alert(`❌ DATABASE REJECTED IT:\n\n${errorData.error}`);
+        alert(`❌ DATABASE REJECTED IT:\n\n${errorData.error || errorData.message}`);
         return; 
       }
-
       const savedTeam = await res.json();
       const existingIdx = (standings || []).findIndex(t => t.name === savedTeam.name);
-      
       if (existingIdx > -1) {
         setStandings(standings.map(t => t.name === savedTeam.name ? savedTeam : t).sort((a,b) => a.rank - b.rank));
       } else {
         setStandings([...(standings || []), savedTeam].sort((a,b) => a.rank - b.rank));
       }
-      
       setStandingForm({ rank: 1, name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W' });
       alert('✅ Standings matrix row updated smoothly!');
-      
-    } catch (err) {
-      console.error(err);
-      alert('Network error communicating with the server.');
-    }
+    } catch (err) { console.error(err); alert('Network error communicating with the server.'); }
   };
 
   const deleteItem = async (id, type) => {
     if (!window.confirm('Are you sure you want to delete this item permanently?')) return;
-    
     try {
       const response = await fetch(`${API_BASE}/${type}/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders() // 🎯 Attach VIP Pass
       });
-
       if (response.ok) {
         if (type === 'news') { setNews(news.filter(item => item._id !== id)); if (editingNewsId === id) setEditingNewsId(null); }
         if (type === 'players') { setPlayers(players.filter(item => item._id !== id)); if (editingPlayerId === id) setEditingPlayerId(null); }
@@ -336,11 +300,10 @@ export default function Admin({
         if (type === 'fixtures') setFixtures(fixtures.filter(item => item._id !== id));
         if (type === 'standings') setStandings(standings.filter(item => item._id !== id)); 
         alert('Item dropped successfully from database records.');
+      } else {
+        alert('Failed to delete: Session may have expired. Please log in again.');
       }
-    } catch (err) {
-      console.error(err);
-      alert('Failed to drop record from backend.');
-    }
+    } catch (err) { console.error(err); alert('Failed to drop record from backend.'); }
   };
 
   if (!isAuthenticated) {
@@ -369,9 +332,14 @@ export default function Admin({
 
   return (
     <div className="page-container">
-      <header className="page-header">
-        <h2>Admin Management Dashboard</h2>
-        <p>Create, update and remove club assets in real-time.</p>
+      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h2>Admin Management Dashboard</h2>
+          <p>Create, update and remove club assets in real-time.</p>
+        </div>
+        <button onClick={handleLogout} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+          Log Out
+        </button>
       </header>
 
       <div className="admin-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
