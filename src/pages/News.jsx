@@ -1,5 +1,6 @@
 // src/pages/News.jsx
 import { Link } from 'react-router-dom';
+import SEO from '../components/SEO';
 
 export default function News({ news }) {
   if (news.length === 0) {
@@ -13,6 +14,10 @@ export default function News({ news }) {
 
   return (
     <div className="page-container">
+      <SEO 
+        title="News & Updates" 
+        description="Latest match reports, club announcements, and squad news from Junda United FC."
+      />
       <header className="page-header">
         <h2>Latest Club News</h2>
         <p>Stay up to date with fixtures, match reports, and announcements from Junda United FC.</p>
