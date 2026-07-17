@@ -1,8 +1,32 @@
-// src/pages/News.jsx
 import { Link } from 'react-router-dom';
 import SEO from '../components/SEO';
 
 export default function News({ news }) {
+  
+  // 🎯 1. The Smart Share Logic
+  const handleShare = async (e, articleId, articleTitle) => {
+    e.preventDefault(); // 🛑 Crucial: Stops the click from triggering the <Link> wrapper
+    
+    const articleUrl = `${window.location.origin}/news/${articleId}`;
+
+    if (navigator.share) {
+      // Mobile: Native share menu
+      try {
+        await navigator.share({
+          title: articleTitle,
+          text: `Check out this update from Junda United FC!\n\n${articleTitle}`,
+          url: articleUrl,
+        });
+      } catch (error) {
+        console.log('User cancelled share');
+      }
+    } else {
+      // Desktop: Fallback to WhatsApp Web
+      const message = `Check out this update from Junda United FC!\n\n${articleTitle}\n${articleUrl}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    }
+  };
+
   if (news.length === 0) {
     return (
       <div className="page-container" style={{ textAlign: 'center', padding: '4rem 1rem' }}>
@@ -25,7 +49,6 @@ export default function News({ news }) {
 
       <div className="news-grid">
         {news.map((item) => (
-          /* 🎯 FIX: Changed item.id to item._id to match MongoDB generated object IDs */
           <Link to={`/news/${item._id}`} key={item._id} className="news-card-link" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="news-card">
               {item.imageUrl && (
@@ -37,14 +60,45 @@ export default function News({ news }) {
                 <span className="subtext">{item.date}</span>
                 <h3 style={{ margin: '0.5rem 0', color: '#1a202c' }}>{item.title}</h3>
                 
-                {/* Clean excerpt teaser: Shows the first 120 characters followed by an ellipsis */}
                 <p style={{ color: '#4a5568', fontSize: '0.95rem' }}>
                   {item.content.length > 120 ? `${item.content.substring(0, 120)}...` : item.content}
                 </p>
                 
-                <span style={{ color: 'var(--primary-color)', fontWeight: 'bold', fontSize: '0.9rem', display: 'inline-block', marginTop: '0.5rem' }}>
-                  Read Full Article →
-                </span>
+                {/* 🎯 2. Flexbox container for the footer link and button */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginTop: '1rem' 
+                }}>
+                  <span style={{ color: 'var(--primary-color)', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                    Read Full Article →
+                  </span>
+                  
+                  {/* 🎯 3. The actual share button */}
+                  <button 
+                    onClick={(e) => handleShare(e, item._id, item.title)}
+                    style={{
+                      backgroundColor: '#f3f4f6',
+                      color: '#1f2937',
+                      border: '1px solid #d1d5db',
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e5e7eb'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                  >
+                    🔗 Share
+                  </button>
+                </div>
+
               </div>
             </div>
           </Link>
