@@ -26,13 +26,15 @@ export default function Gallery({ gallery = [] }) {
                     controls 
                     muted 
                     loop 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    /* 🎯 FIX: Changed objectFit to 'contain' */
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 ) : (
                   <img 
                     src={item.url} 
                     alt={item.caption || "Junda United Club Asset"} 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    /* 🎯 FIX: Changed objectFit to 'contain' */
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }} 
                     loading="lazy"
                   />
                 )}
