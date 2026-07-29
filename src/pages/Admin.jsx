@@ -18,6 +18,9 @@ export default function Admin({
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // 🎯 NEW: Loading state for login verification
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const [newsForm, setNewsForm] = useState({ title: '', content: '', imageUrl: '', date: '' });
   const [playerForm, setPlayerForm] = useState({ 
@@ -37,7 +40,6 @@ export default function Admin({
   const [editingNewsId, setEditingNewsId] = useState(null);
   const [editingPlayerId, setEditingPlayerId] = useState(null);
 
-  // 🎯 Helper function to get authorization headers
   const getAuthHeaders = (isJson = true) => {
     const headers = { 'Authorization': `Bearer ${adminToken}` };
     if (isJson) headers['Content-Type'] = 'application/json';
@@ -47,6 +49,9 @@ export default function Admin({
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
     if (!usernameInput || !passwordInput) return alert('Both username and password are required!');
+    
+    // 🎯 Trigger the loading animation
+    setIsLoggingIn(true);
     
     try {
       const response = await fetch(`${API_BASE}/admin/login`, {
@@ -58,11 +63,10 @@ export default function Admin({
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Save the JWT token!
         setAdminToken(data.token);
         sessionStorage.setItem('junda_jwt', data.token);
         setIsAuthenticated(true);
-        alert('🔒 Session Authenticated Successfully!');
+        // alert('🔒 Session Authenticated Successfully!'); // (Optional: can remove this alert now that UI feels responsive)
       } else {
         alert(data.message || 'Access Denied. Incorrect username or password.');
         setPasswordInput('');
@@ -70,6 +74,9 @@ export default function Admin({
     } catch (err) {
       console.error(err);
       alert('Server error trying to authenticate.');
+    } finally {
+      // 🎯 Turn off the loading animation regardless of success or failure
+      setIsLoggingIn(false);
     }
   };
 
@@ -90,7 +97,7 @@ export default function Admin({
     try {
       const response = await fetch(`${API_BASE}/upload`, {
         method: 'POST',
-        headers: getAuthHeaders(false), // 🎯 Attach VIP Pass (no JSON content type for files)
+        headers: getAuthHeaders(false),
         body: formData,
       });
 
@@ -120,7 +127,7 @@ export default function Admin({
         const updatePayload = { title: newsForm.title, content: newsForm.content, imageUrl: newsForm.imageUrl, date: newsForm.date };
         const response = await fetch(`${API_BASE}/news/${editingNewsId}`, {
           method: 'PUT',
-          headers: getAuthHeaders(), // 🎯 Attach VIP Pass
+          headers: getAuthHeaders(),
           body: JSON.stringify(updatePayload)
         });
 
@@ -141,7 +148,7 @@ export default function Admin({
       try {
         const response = await fetch(`${API_BASE}/news`, {
           method: 'POST',
-          headers: getAuthHeaders(), // 🎯 Attach VIP Pass
+          headers: getAuthHeaders(),
           body: JSON.stringify(newArticle)
         });
 
@@ -171,7 +178,7 @@ export default function Admin({
       try {
         const response = await fetch(`${API_BASE}/players/${editingPlayerId}`, {
           method: 'PUT',
-          headers: getAuthHeaders(), // 🎯 Attach VIP Pass
+          headers: getAuthHeaders(),
           body: JSON.stringify(playerForm)
         });
         if (response.ok) {
@@ -188,7 +195,7 @@ export default function Admin({
       try {
         const response = await fetch(`${API_BASE}/players`, {
           method: 'POST',
-          headers: getAuthHeaders(), // 🎯 Attach VIP Pass
+          headers: getAuthHeaders(),
           body: JSON.stringify(playerForm)
         });
         if (response.ok) {
@@ -219,7 +226,7 @@ export default function Admin({
     try {
       const response = await fetch(`${API_BASE}/gallery`, {
         method: 'POST',
-        headers: getAuthHeaders(), // 🎯 Attach VIP Pass
+        headers: getAuthHeaders(),
         body: JSON.stringify(galleryForm)
       });
       if (response.ok) {
@@ -242,7 +249,7 @@ export default function Admin({
     try {
       const response = await fetch(`${API_BASE}/fixtures`, {
         method: 'POST',
-        headers: getAuthHeaders(), // 🎯 Attach VIP Pass
+        headers: getAuthHeaders(),
         body: JSON.stringify(submissionPayload)
       });
       if (response.ok) {
@@ -266,7 +273,7 @@ export default function Admin({
     try {
       const res = await fetch(`${API_BASE}/standings`, {
         method: 'POST',
-        headers: getAuthHeaders(), // 🎯 Attach VIP Pass
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
@@ -291,7 +298,7 @@ export default function Admin({
     try {
       const response = await fetch(`${API_BASE}/${type}/${id}`, {
         method: 'DELETE',
-        headers: getAuthHeaders() // 🎯 Attach VIP Pass
+        headers: getAuthHeaders()
       });
       if (response.ok) {
         if (type === 'news') { setNews(news.filter(item => item._id !== id)); if (editingNewsId === id) setEditingNewsId(null); }
@@ -306,20 +313,62 @@ export default function Admin({
     } catch (err) { console.error(err); alert('Failed to drop record from backend.'); }
   };
 
+  // 🎯 UPDATE: The login form button now reacts to the `isLoggingIn` state
   if (!isAuthenticated) {
     return (
       <div className="page-container" style={{ maxWidth: '400px', marginTop: '5rem' }}>
         <form onSubmit={handleLogin} className="admin-form">
           <h3>Junda UI Secure Gateway</h3>
-          <div className="form-group"><label>Username</label><input type="text" placeholder="Username" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} /></div>
+          <div className="form-group">
+            <label>Username</label>
+            <input type="text" placeholder="Username" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} disabled={isLoggingIn} />
+          </div>
           <div className="form-group">
             <label>Security Password</label>
             <div className="password-input-wrapper">
-              <input type={showPassword ? "text" : "password"} placeholder="••••••••" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e); }} />
-              <button type="button" className="toggle-password-btn" onClick={() => setShowPassword(!showPassword)}>{showPassword ? "Hide" : "Show"}</button>
+              <input type={showPassword ? "text" : "password"} placeholder="••••••••" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} disabled={isLoggingIn} onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e); }} />
+              <button type="button" className="toggle-password-btn" onClick={() => setShowPassword(!showPassword)} disabled={isLoggingIn}>
+                {showPassword ? "Hide" : "Show"}
+              </button>
             </div>
           </div>
-          <button type="submit" className="submit-btn">Unlock Dashboard</button>
+          <button 
+            type="submit" 
+            className="submit-btn" 
+            disabled={isLoggingIn}
+            style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center', 
+              gap: '0.5rem',
+              opacity: isLoggingIn ? 0.7 : 1,
+              cursor: isLoggingIn ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {isLoggingIn ? (
+              <>
+                {/* 🎯 Sleek inline SVG loading spinner */}
+                <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                  <style>{`
+                    .spinner_S1WN{animation:spinner_MgQ0 1.2s linear infinite;transform-origin:center}
+                    .spinner_b2T7{animation-delay:-.1s}
+                    .spinner_YRVV{animation-delay:-.2s}
+                    @keyframes spinner_MgQ0{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+                  `}</style>
+                  <g className="spinner_S1WN">
+                    <circle cx="12" cy="2.5" r="2.5" opacity=".8"/>
+                    <circle cx="16.75" cy="3.77" r="1.5" opacity=".6"/>
+                    <circle cx="20.23" cy="7.25" r="1.5" opacity=".4"/>
+                    <circle cx="21.50" cy="12.00" r="1.5" opacity=".2"/>
+                    <circle cx="20.23" cy="16.75" r="1.5" opacity=".1"/>
+                  </g>
+                </svg>
+                Verifying Credentials...
+              </>
+            ) : (
+              "Unlock Dashboard"
+            )}
+          </button>
         </form>
       </div>
     );
