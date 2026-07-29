@@ -12,6 +12,9 @@ import './App.css';
 import Players from './pages/Squad';
 import FixturesPage from './pages/FixturesPage'; 
 
+// 🎯 NEW: Import the Player Profile component
+import PlayerProfile from './pages/PlayerProfile'; 
+
 const API_BASE = import.meta.env.PROD 
   ? "https://junda-united-fc.onrender.com/api" 
   : "http://localhost:5000/api";
@@ -22,7 +25,7 @@ export default function App() {
   const [fixtures, setFixtures] = useState([]); 
   const [players, setPlayers] = useState([]);
   const [gallery, setGallery] = useState([]);
-  const [standings, setStandings] = useState([]); // 🎯 NEW: Dynamic Standings state tracking node
+  const [standings, setStandings] = useState([]); // Dynamic Standings state tracking node
 
   // 2. Fetch all collections from MongoDB Atlas when the website mounts
   useEffect(() => {
@@ -42,7 +45,7 @@ export default function App() {
           setFixtures(fixturesData);
         }
 
-        // 🎯 NEW: Fetch dynamic live standings rows from backend
+        // Fetch dynamic live standings rows from backend
         const standingsRes = await fetch(`${API_BASE}/standings`);
         if (standingsRes.ok) {
           const standingsData = await standingsRes.json();
@@ -78,12 +81,16 @@ export default function App() {
       <Routes>
         <Route path="/" element={<News news={news} />} />
         <Route path="/gallery" element={<Gallery gallery={gallery} />} />
-        <Route path="/squad" element={<Players players={players} />} />
         
-        {/* 🎯 UPDATE: Pass live standings down to the public Match Centre screen */}
+        {/* SQUAD ROUTES */}
+        <Route path="/squad" element={<Players players={players} />} />
+        {/* 🎯 NEW: The dynamic Player Profile Route */}
+        <Route path="/squad/:id" element={<PlayerProfile players={players} />} />
+        
+        {/* MATCH CENTRE */}
         <Route path="/fixtures" element={<FixturesPage fixtures={fixtures} standings={standings} />} />
         
-        {/* 🎯 UPDATE: Pass standing hooks to Admin so submission inputs affect data */}
+        {/* ADMIN PANEL */}
         <Route 
           path="/admin" 
           element={
@@ -103,6 +110,7 @@ export default function App() {
           } 
         />
         
+        {/* INDIVIDUAL NEWS ARTICLE */}
         <Route path="/news/:id" element={<ArticleDetail news={news} />} />
       </Routes>
 
