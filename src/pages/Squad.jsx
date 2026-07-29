@@ -1,8 +1,9 @@
 // src/pages/Squad.jsx
 import React from 'react';
+import { Link } from 'react-router-dom'; // 🎯 NEW: Imported Link
 
 export default function Squad({ players = [] }) {
-  // 🎯 Grouping players by category and role based on the new database schema
+  // Grouping players by category and role based on the new database schema
   const firstTeam = players.filter(p => p.role === 'player' && (p.squadCategory === 'First Team' || !p.squadCategory));
   const under17 = players.filter(p => p.role === 'player' && p.squadCategory === 'Under 17');
   const under13 = players.filter(p => p.role === 'player' && p.squadCategory === 'Under 13');
@@ -11,49 +12,77 @@ export default function Squad({ players = [] }) {
   // Helper placeholder fallback if no image was uploaded
   const placeholderImg = "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=300&auto=format&fit=crop";
 
-  // 🎯 Reusable component for rendering a professional grid of players with their stats
+  // Reusable component for rendering a professional grid of players with their stats
   const PlayerGrid = ({ roster }) => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
       {roster.map(player => (
-        <div key={player._id} style={{ background: '#fff', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column' }}>
-          
-          {/* Photo Header */}
-          <div style={{ height: '280px', background: '#f1f5f9', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-            <img src={player.image || placeholderImg} alt={player.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        /* 🎯 NEW: Wrapped the entire card in a Link tag targeting the player ID */
+        <Link 
+          to={`/squad/${player._id}`} 
+          key={player._id} 
+          style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+        >
+          <div 
+            style={{ 
+              background: '#fff', 
+              borderRadius: '12px', 
+              overflow: 'hidden', 
+              border: '1px solid #e2e8f0', 
+              boxShadow: '0 4px 15px rgba(0,0,0,0.05)', 
+              display: 'flex', 
+              flexDirection: 'column',
+              height: '100%',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease' // Smooth hover setup
+            }}
+            /* 🎯 NEW: Added a sleek lift effect when hovering over the card */
+            onMouseOver={e => {
+              e.currentTarget.style.transform = 'translateY(-5px)';
+              e.currentTarget.style.boxShadow = '0 12px 25px rgba(0,0,0,0.1)';
+            }}
+            onMouseOut={e => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.05)';
+            }}
+          >
             
-            {/* Jersey Number Overlay */}
-            {player.jerseyNumber && (
-              <div style={{ position: 'absolute', top: '15px', right: '15px', background: '#1d4ed8', color: '#fff', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: '1.4rem', fontWeight: '900', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
-                {player.jerseyNumber}
-              </div>
-            )}
-          </div>
-
-          {/* Player Info & Stats Block */}
-          <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.4rem', color: '#0f172a', fontWeight: '800' }}>{player.name}</h3>
-            <p style={{ margin: '0 0 1rem 0', color: '#2563eb', fontWeight: '700', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '0.05em' }}>{player.position}</p>
-            
-            {/* Extended Profile Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'center' }}>
-              <div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Age</div>
-                <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: '700' }}>{player.age || '-'}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Apps</div>
-                <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: '700' }}>{player.appearances || 0}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Goals</div>
-                <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: '700' }}>{player.goals || 0}</div>
-              </div>
+            {/* Photo Header */}
+            <div style={{ height: '280px', background: '#f1f5f9', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+              <img src={player.image || placeholderImg} alt={player.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              
+              {/* Jersey Number Overlay */}
+              {player.jerseyNumber && (
+                <div style={{ position: 'absolute', top: '15px', right: '15px', background: '#1d4ed8', color: '#fff', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: '1.4rem', fontWeight: '900', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                  {player.jerseyNumber}
+                </div>
+              )}
             </div>
 
-            {/* Player Bio */}
-            {player.bio && <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569', lineHeight: '1.5' }}>{player.bio}</p>}
+            {/* Player Info & Stats Block */}
+            <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.4rem', color: '#0f172a', fontWeight: '800' }}>{player.name}</h3>
+              <p style={{ margin: '0 0 1rem 0', color: '#2563eb', fontWeight: '700', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '0.05em' }}>{player.position}</p>
+              
+              {/* Extended Profile Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Age</div>
+                  <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: '700' }}>{player.age || '-'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Apps</div>
+                  <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: '700' }}>{player.appearances || 0}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Goals</div>
+                  <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: '700' }}>{player.goals || 0}</div>
+                </div>
+              </div>
+
+              {/* Player Bio */}
+              {player.bio && <p style={{ margin: 0, fontSize: '0.9rem', color: '#475569', lineHeight: '1.5' }}>{player.bio}</p>}
+            </div>
           </div>
-        </div>
+        </Link>
       ))}
     </div>
   );
@@ -104,7 +133,6 @@ export default function Squad({ players = [] }) {
                   <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.2rem', color: '#0f172a' }}>{coach.name}</h3>
                   <p style={{ margin: 0, color: '#64748b', fontWeight: '600' }}>{coach.position}</p>
                   
-                  {/* 🎯 NEW: Contact Info displayed here */}
                   {coach.contact && (
                     <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#2563eb', fontWeight: 'bold' }}>
                       ✉️ {coach.contact}
