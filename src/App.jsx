@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
+import { motion } from 'framer-motion'; // 🎯 NEW: Imported Framer motion for the Splash Screen
+
 import Navbar from './components/Navbar';
 import ArticleDetail from './pages/ArticleDetail';
 import News from './pages/News';
@@ -11,8 +13,6 @@ import Admin from './pages/Admin';
 import './App.css';
 import Players from './pages/Squad';
 import FixturesPage from './pages/FixturesPage'; 
-
-// 🎯 NEW: Import the Player Profile component
 import PlayerProfile from './pages/PlayerProfile'; 
 
 const API_BASE = import.meta.env.PROD 
@@ -20,12 +20,15 @@ const API_BASE = import.meta.env.PROD
   : "http://localhost:5000/api";
 
 export default function App() {
-  // 1. Initialize State with empty arrays (Waiting for Cloud Data)
+  // 1. Initialize State 
   const [news, setNews] = useState([]);
   const [fixtures, setFixtures] = useState([]); 
   const [players, setPlayers] = useState([]);
   const [gallery, setGallery] = useState([]);
-  const [standings, setStandings] = useState([]); // Dynamic Standings state tracking node
+  const [standings, setStandings] = useState([]); 
+  
+  // 🎯 NEW: Global Loading State
+  const [isAppLoading, setIsAppLoading] = useState(true);
 
   // 2. Fetch all collections from MongoDB Atlas when the website mounts
   useEffect(() => {
@@ -38,28 +41,28 @@ export default function App() {
           setNews(newsData);
         }
 
-        // Fetch Fixtures data from cloud database
+        // Fetch Fixtures 
         const fixturesRes = await fetch(`${API_BASE}/fixtures`);
         if (fixturesRes.ok) {
           const fixturesData = await fixturesRes.json();
           setFixtures(fixturesData);
         }
 
-        // Fetch dynamic live standings rows from backend
+        // Fetch Standings
         const standingsRes = await fetch(`${API_BASE}/standings`);
         if (standingsRes.ok) {
           const standingsData = await standingsRes.json();
           setStandings(standingsData);
         }
 
-        // Fetch Players/Squad
+        // Fetch Players
         const playersRes = await fetch(`${API_BASE}/players`);
         if (playersRes.ok) {
           const playersData = await playersRes.json();
           setPlayers(playersData);
         }
 
-        // Fetch Gallery Assets
+        // Fetch Gallery
         const galleryRes = await fetch(`${API_BASE}/gallery`);
         if (galleryRes.ok) {
           const galleryData = await galleryRes.json();
@@ -67,12 +70,49 @@ export default function App() {
         }
       } catch (error) {
         console.error("❌ Error retrieving records from cloud database:", error);
+      } finally {
+        // 🎯 Turn off the loading screen whether the fetch succeeds OR fails
+        setIsAppLoading(false);
       }
     };
 
     fetchAllData();
   }, []);
 
+  // 🎯 NEW: The Global Splash Screen
+  if (isAppLoading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a', color: '#fff' }}>
+        
+        {/* Pulsing Club Badge */}
+        <motion.img
+          src="/junda-logo.png"
+          alt="Junda United Badge"
+          initial={{ scale: 0.85, opacity: 0.7 }}
+          animate={{ scale: 1.05, opacity: 1 }}
+          transition={{ repeat: Infinity, duration: 1.2, direction: 'alternate', ease: 'easeInOut' }}
+          style={{ width: '180px', marginBottom: '2rem' }}
+        />
+        
+        {/* Fading Title */}
+        <motion.h2 
+          initial={{ opacity: 0.3 }} 
+          animate={{ opacity: 1 }} 
+          transition={{ repeat: Infinity, duration: 1.2, direction: "alternate" }}
+          style={{ margin: 0, letterSpacing: '3px', fontSize: '1.5rem', fontWeight: '800' }}
+        >
+          JUNDA UNITED FC
+        </motion.h2>
+        
+        {/* Context Text for the User */}
+        <p style={{ color: '#64748b', marginTop: '1rem', fontSize: '0.95rem', fontWeight: '500' }}>
+          Warming up the stadium servers...
+        </p>
+      </div>
+    );
+  }
+
+  // 🎯 Once data is loaded, render the actual app
   return (
     <BrowserRouter>
       {/* Top Header Strip */}
@@ -84,7 +124,6 @@ export default function App() {
         
         {/* SQUAD ROUTES */}
         <Route path="/squad" element={<Players players={players} />} />
-        {/* 🎯 NEW: The dynamic Player Profile Route */}
         <Route path="/squad/:id" element={<PlayerProfile players={players} />} />
         
         {/* MATCH CENTRE */}
