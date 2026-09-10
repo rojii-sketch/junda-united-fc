@@ -16,6 +16,19 @@ import Gallery from './models/Gallery.js';
 import NodeCache from 'node-cache';
 const apiCache = new NodeCache({ stdTTL: 600 }); // Data lives in memory for 10 minutes (600 seconds)
 dotenv.config();
+
+const requiredAuthEnvironmentVariables = ['ADMIN_USER', 'ADMIN_PASS', 'JWT_SECRET'];
+const missingAuthEnvironmentVariables = requiredAuthEnvironmentVariables.filter(
+  (name) => !process.env[name]?.trim()
+);
+
+if (missingAuthEnvironmentVariables.length > 0) {
+  throw new Error(
+    `Missing required authentication environment variable(s): ${missingAuthEnvironmentVariables.join(', ')}`
+  );
+}
+
+const { ADMIN_USER, ADMIN_PASS, JWT_SECRET } = process.env;
 const app = express();
 
 // Configure Cloudinary
@@ -80,17 +93,11 @@ app.get('/api/test', (req, res) => {
 // ==========================================================
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
-  
-  const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-  const ADMIN_PASS = process.env.ADMIN_PASS || 'junda2026';
-
-  console.log(`React sent -> User: "${username}" | Pass: "${password}"`);
-  console.log(`Render expects -> User: "${ADMIN_USER}" | Pass: "${ADMIN_PASS}"`);
 
   if (username === ADMIN_USER && password === ADMIN_PASS) {
     const token = jwt.sign(
       { username: ADMIN_USER, role: 'admin' }, 
-      process.env.JWT_SECRET, 
+      JWT_SECRET,
       { expiresIn: '2h' }
     );
     
@@ -111,7 +118,7 @@ const requireAuth = (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.admin = decoded; // Attach the VIP info to the request
     next(); // Let them through!
   } catch (err) {
