@@ -30,6 +30,40 @@ if (missingAuthEnvironmentVariables.length > 0) {
 
 const { ADMIN_USER, ADMIN_PASS, JWT_SECRET } = process.env;
 const app = express();
+app.set('trust proxy', 1);
+
+const productionFrontendOrigin = process.env.FRONTEND_ORIGIN || 'https://junda-united-fc.vercel.app';
+const allowedOrigins = new Set([
+  productionFrontendOrigin,
+  'http://localhost:5173',
+  'http://localhost:4173',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:4173'
+]);
+
+const loginAttempts = new Map();
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 5;
+
+const loginRateLimit = (req, res, next) => {
+  const now = Date.now();
+  const clientKey = req.ip || req.socket.remoteAddress || 'unknown';
+  const current = loginAttempts.get(clientKey);
+
+  if (!current || now - current.windowStart >= LOGIN_WINDOW_MS) {
+    loginAttempts.set(clientKey, { windowStart: now, count: 1 });
+    return next();
+  }
+
+  if (current.count >= LOGIN_MAX_ATTEMPTS) {
+    const retryAfterSeconds = Math.ceil((LOGIN_WINDOW_MS - (now - current.windowStart)) / 1000);
+    res.set('Retry-After', String(retryAfterSeconds));
+    return res.status(429).json({ success: false, message: 'Too many login attempts. Try again later.' });
+  }
+
+  current.count += 1;
+  return next();
+};
 
 // Configure Cloudinary
 cloudinary.config({
@@ -40,11 +74,44 @@ cloudinary.config({
 
 // Configure Multer storage engine (holds files temporarily in buffer memory)
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const allowedUploadTypes = new Map([
+  ['image/jpeg', /\.(jpe?g)$/i],
+  ['image/png', /\.png$/i],
+  ['image/webp', /\.webp$/i],
+  ['image/gif', /\.gif$/i]
+]);
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, callback) => {
+    const extensionPattern = allowedUploadTypes.get(file.mimetype);
+    if (!extensionPattern || !extensionPattern.test(file.originalname)) {
+      return callback(new multer.MulterError('LIMIT_UNEXPECTED_FILE', 'image'));
+    }
+    return callback(null, true);
+  }
+});
 
 // Middleware
-app.use(cors());
-app.use(express.json()); // Allows server to read JSON data bodies sent by React
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Origin not allowed'));
+  }
+}));
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
+  });
+  next();
+});
+app.use(express.json({ limit: '100kb' })); // Allows server to read bounded JSON bodies from React
 
 // 🛡️ THE MAGIC CACHE SHIELD
 app.use('/api', (req, res, next) => {
@@ -80,7 +147,7 @@ app.use('/api', (req, res, next) => {
 // Connect to MongoDB Atlas
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('🚀 Connected smoothly to MongoDB Atlas Cloud Database'))
-  .catch(err => console.error('❌ Database Connection Error:', err));
+  .catch(() => console.error('❌ Database connection failed'));
 
 // Test Endpoint
 app.get('/api/test', (req, res) => {
@@ -91,10 +158,11 @@ app.get('/api/test', (req, res) => {
 // ==========================================================
 // 🔐 SECURE ADMIN LOGIN ENDPOINT
 // ==========================================================
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', loginRateLimit, (req, res) => {
   const { username, password } = req.body;
 
   if (username === ADMIN_USER && password === ADMIN_PASS) {
+    loginAttempts.delete(req.ip || req.socket.remoteAddress || 'unknown');
     const token = jwt.sign(
       { username: ADMIN_USER, role: 'admin' }, 
       JWT_SECRET,
@@ -132,22 +200,22 @@ const requireAuth = (req, res, next) => {
 // ==========================================================
 app.get('/api/news', async (req, res) => {
   try { res.json(await News.find().sort({ createdAt: -1 })); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 app.post('/api/news', requireAuth, async (req, res) => {
   try { res.status(201).json(await new News(req.body).save()); } 
-  catch (err) { res.status(400).json({ error: err.message }); }
+  catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 app.put('/api/news/:id', requireAuth, async (req, res) => {
   try { res.json(await News.findByIdAndUpdate(req.params.id, req.body, { new: true })); } 
-  catch (err) { res.status(400).json({ error: err.message }); }
+  catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 app.delete('/api/news/:id', requireAuth, async (req, res) => {
   try { await News.findByIdAndDelete(req.params.id); res.json({ message: 'Article wiped clean' }); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 
@@ -155,22 +223,22 @@ app.delete('/api/news/:id', requireAuth, async (req, res) => {
 // ⚽ SQUAD ROSTER ENDPOINTS
 // ==========================================================
 app.get('/api/players', async (req, res) => {
-  try { res.json(await Player.find()); } catch (err) { res.status(500).json({ error: err.message }); }
+  try { res.json(await Player.find()); } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 app.post('/api/players', requireAuth, async (req, res) => {
   try { res.status(201).json(await new Player(req.body).save()); } 
-  catch (err) { res.status(400).json({ error: err.message }); }
+  catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 app.put('/api/players/:id', requireAuth, async (req, res) => {
   try { res.json(await Player.findByIdAndUpdate(req.params.id, req.body, { new: true })); } 
-  catch (err) { res.status(400).json({ error: err.message }); }
+  catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 app.delete('/api/players/:id', requireAuth, async (req, res) => {
   try { await Player.findByIdAndDelete(req.params.id); res.json({ message: 'Player removed' }); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 
@@ -178,17 +246,17 @@ app.delete('/api/players/:id', requireAuth, async (req, res) => {
 // 📸 GALLERY ENDPOINTS
 // ==========================================================
 app.get('/api/gallery', async (req, res) => {
-  try { res.json(await Gallery.find()); } catch (err) { res.status(500).json({ error: err.message }); }
+  try { res.json(await Gallery.find()); } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 app.post('/api/gallery', requireAuth, async (req, res) => {
   try { res.status(201).json(await new Gallery(req.body).save()); } 
-  catch (err) { res.status(400).json({ error: err.message }); }
+  catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 app.delete('/api/gallery/:id', requireAuth, async (req, res) => {
   try { await Gallery.findByIdAndDelete(req.params.id); res.json({ message: 'Asset removed' }); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 
@@ -197,17 +265,17 @@ app.delete('/api/gallery/:id', requireAuth, async (req, res) => {
 // ==========================================================
 app.get('/api/fixtures', async (req, res) => {
   try { res.json(await Fixture.find().sort({ createdAt: -1 })); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 app.post('/api/fixtures', requireAuth, async (req, res) => {
   try { res.status(201).json(await new Fixture(req.body).save()); } 
-  catch (err) { res.status(400).json({ error: err.message }); }
+  catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 app.delete('/api/fixtures/:id', requireAuth, async (req, res) => {
   try { await Fixture.findByIdAndDelete(req.params.id); res.json({ message: 'Fixture removed' }); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 
@@ -216,7 +284,7 @@ app.delete('/api/fixtures/:id', requireAuth, async (req, res) => {
 // ==========================================================
 app.get('/api/standings', async (req, res) => {
   try { res.json(await Standing.find().sort({ rank: 1 })); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 app.post('/api/standings', requireAuth, async (req, res) => {
@@ -225,14 +293,14 @@ app.post('/api/standings', requireAuth, async (req, res) => {
     const update = req.body;
     const options = { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true };
     res.status(201).json(await Standing.findOneAndUpdate(query, update, options));
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+  } catch {
+    res.status(400).json({ error: 'Invalid request' });
   }
 });
 
 app.delete('/api/standings/:id', requireAuth, async (req, res) => {
   try { await Standing.findByIdAndDelete(req.params.id); res.json({ message: 'Team removed' }); } 
-  catch (err) { res.status(500).json({ error: err.message }); }
+  catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
 
@@ -240,23 +308,58 @@ app.delete('/api/standings/:id', requireAuth, async (req, res) => {
 // 📸 CLOUDINARY IMAGE UPLOAD ENDPOINT
 // ==========================================================
 // Note: We also protect the upload route so randos can't upload to your Cloudinary!
+const hasValidImageSignature = (file) => {
+  const header = file.buffer.subarray(0, 12);
+  if (file.mimetype === 'image/jpeg') return header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff;
+  if (file.mimetype === 'image/png') return header.toString('hex', 0, 8) === '89504e470d0a1a0a';
+  if (file.mimetype === 'image/gif') return ['GIF87a', 'GIF89a'].includes(header.toString('ascii', 0, 6));
+  if (file.mimetype === 'image/webp') return header.toString('ascii', 0, 4) === 'RIFF' && header.toString('ascii', 8, 12) === 'WEBP';
+  return false;
+};
+
 app.post('/api/upload', requireAuth, upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded.' });
+  }
+
+  if (!hasValidImageSignature(req.file)) {
+    return res.status(400).json({ success: false, message: 'Unsupported or invalid image file.' });
   }
 
   const uploadStream = cloudinary.uploader.upload_stream(
     { folder: 'junda_united', timeout: 120000 }, 
     (error, result) => {
       if (error) {
-        console.error('Cloudinary Upload Error:', error);
-        return res.status(500).json({ success: false, error: error.message });
+        console.error('Cloudinary upload failed');
+        return res.status(502).json({ success: false, message: 'Image upload failed.' });
       }
       res.json({ success: true, url: result.secure_url });
     }
   );
 
   uploadStream.end(req.file.buffer);
+});
+
+app.use((error, req, res, next) => {
+  if (res.headersSent) return next(error);
+
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ success: false, message: 'Image file is too large.' });
+    }
+    return res.status(400).json({ success: false, message: 'Invalid image upload.' });
+  }
+
+  if (error.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request body is too large.' });
+  }
+
+  if (error.message === 'Origin not allowed') {
+    return res.status(403).json({ error: 'Origin is not allowed.' });
+  }
+
+  console.error('Unhandled API request error');
+  return res.status(500).json({ error: 'Internal server error' });
 });
 
 // Boot listening port execution
