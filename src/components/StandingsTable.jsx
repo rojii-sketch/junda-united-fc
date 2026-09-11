@@ -1,14 +1,28 @@
 // src/components/StandingsTable.jsx
-import React from 'react';
-
 // 🎯 FIX 1: Accept the standings prop passed from FixturesPage or News
-export default function StandingsTable({ standings = [] }) {
-  
+export default function StandingsTable({ standings = [], isLoading = false, error = null, onRetry }) {
+  if (isLoading) {
+    return (
+      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+        Loading official league standings from the cloud...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+        <p>Unable to load official league standings.</p>
+        {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
+      </div>
+    );
+  }
+
   // 🎯 FIX 2: Check if there's no data yet, show loading instead of crashing
   if (standings.length === 0) {
     return (
       <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-        ⏳ Loading official league standings from the cloud...
+        No league standings available yet.
       </div>
     );
   }

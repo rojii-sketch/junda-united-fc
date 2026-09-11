@@ -1,11 +1,48 @@
 // src/pages/ArticleDetail.jsx
 import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { fetchJson } from '../api';
 
-export default function ArticleDetail({ news }) {
+export default function ArticleDetail() {
   const { id } = useParams();
-  
+  const [news, setNews] = useState([]);
+  const [status, setStatus] = useState('loading');
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchJson('/news', controller.signal)
+      .then(data => {
+        setNews(data);
+        setStatus('success');
+      })
+      .catch(error => {
+        if (error.name === 'AbortError') return;
+        console.error('Error retrieving article:', error);
+        setStatus('error');
+      });
+
+    return () => controller.abort();
+  }, [retryCount]);
 
   const article = news.find(item => item._id === id);
+
+  if (status === 'loading') {
+    return <DetailMessage message="Loading article..." />;
+  }
+
+  if (status === 'error') {
+    return (
+      <DetailMessage
+        message="Unable to load this article."
+        onRetry={() => {
+          setStatus('loading');
+          setRetryCount(count => count + 1);
+        }}
+      />
+    );
+  }
 
   if (!article) {
     return (
@@ -64,6 +101,15 @@ export default function ArticleDetail({ news }) {
           {article.content}
         </div>
       </article>
+    </div>
+  );
+}
+
+function DetailMessage({ message, onRetry }) {
+  return (
+    <div className="page-container" style={{ textAlign: 'center', marginTop: '5rem' }}>
+      <p>{message}</p>
+      {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
     </div>
   );
 }

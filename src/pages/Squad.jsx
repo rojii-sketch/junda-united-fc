@@ -2,41 +2,32 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { fetchJson } from '../api';
 
-export default function Squad({ players = [] }) {
-  // Grouping players by category and role based on the new database schema
-  const firstTeam = players.filter(p => p.role === 'player' && (p.squadCategory === 'First Team' || !p.squadCategory));
-  const under17 = players.filter(p => p.role === 'player' && p.squadCategory === 'Under 17');
-  const under13 = players.filter(p => p.role === 'player' && p.squadCategory === 'Under 13');
-  const coachingStaff = players.filter(p => p.role === 'coach');
+const placeholderImg = "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=300&auto=format&fit=crop";
+const glassStyle = {
+  background: 'rgba(30, 41, 59, 0.4)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+  border: '1px solid rgba(255, 255, 255, 0.05)',
+};
 
-  // Helper placeholder fallback if no image was uploaded
-  const placeholderImg = "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=300&auto=format&fit=crop";
-
-  // Reusable style for the "Glass" transparent effect on the cards
-  const glassStyle = {
-    background: 'rgba(30, 41, 59, 0.4)', // Semi-transparent dark blue
-    backdropFilter: 'blur(8px)',         // Blurs the background logo behind the card
-    WebkitBackdropFilter: 'blur(8px)',   // Safari support
-    border: '1px solid rgba(255, 255, 255, 0.05)', // Subtle glowing edge
-  };
-
-  // Reusable component for rendering a professional grid of players with their stats
-  const PlayerGrid = ({ roster }) => (
+function PlayerGrid({ roster }) {
+  return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
       {roster.map(player => (
-        <Link 
-          to={`/squad/${player._id}`} 
-          key={player._id} 
+        <Link
+          to={`/squad/${player._id}`}
+          key={player._id}
           style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
         >
-          <div 
-            style={{ 
+          <div
+            style={{
               ...glassStyle,
-              borderRadius: '12px', 
-              overflow: 'hidden', 
-              boxShadow: '0 4px 15px rgba(0,0,0,0.2)', 
-              display: 'flex', 
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+              display: 'flex',
               flexDirection: 'column',
               height: '100%',
               transition: 'transform 0.2s ease, box-shadow 0.2s ease'
@@ -50,16 +41,13 @@ export default function Squad({ players = [] }) {
               e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
             }}
           >
-            
-            {/* Photo Header - 🎯 Fixed image cropping with objectFit cover and objectPosition top */}
             <div style={{ height: '280px', background: '#000', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-              <img 
-                src={player.image || placeholderImg} 
-                alt={player.name} 
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }} 
+              <img
+                src={player.image || placeholderImg}
+                alt={player.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }}
               />
-              
-              {/* Jersey Number Overlay */}
+
               {player.jerseyNumber && (
                 <div style={{ position: 'absolute', top: '15px', right: '15px', background: '#2563eb', color: '#fff', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: '1.4rem', fontWeight: '900', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
                   {player.jerseyNumber}
@@ -67,12 +55,10 @@ export default function Squad({ players = [] }) {
               )}
             </div>
 
-            {/* Player Info & Stats Block */}
             <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
               <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.4rem', color: '#fff', fontWeight: '800' }}>{player.name}</h3>
               <p style={{ margin: '0 0 1rem 0', color: '#60a5fa', fontWeight: '700', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '0.05em' }}>{player.position}</p>
-              
-              {/* Extended Profile Grid */}
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', background: 'rgba(15, 23, 42, 0.6)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'center' }}>
                 <div>
                   <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Age</div>
@@ -88,7 +74,6 @@ export default function Squad({ players = [] }) {
                 </div>
               </div>
 
-              {/* Player Bio */}
               {player.bio && <p style={{ margin: 0, fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.5' }}>{player.bio}</p>}
             </div>
           </div>
@@ -96,6 +81,51 @@ export default function Squad({ players = [] }) {
       ))}
     </div>
   );
+}
+
+export default function Squad() {
+  const [players, setPlayers] = React.useState([]);
+  const [status, setStatus] = React.useState('loading');
+  const [retryCount, setRetryCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+
+    fetchJson('/players', controller.signal)
+      .then(data => {
+        setPlayers(data);
+        setStatus('success');
+      })
+      .catch(error => {
+        if (error.name === 'AbortError') return;
+        console.error('Error retrieving players:', error);
+        setStatus('error');
+      });
+
+    return () => controller.abort();
+  }, [retryCount]);
+
+  if (status === 'loading') {
+    return <PageMessage message="Loading the club roster..." />;
+  }
+
+  if (status === 'error') {
+    return (
+      <PageMessage
+        message="Unable to load the club roster."
+        onRetry={() => {
+          setStatus('loading');
+          setRetryCount(count => count + 1);
+        }}
+      />
+    );
+  }
+
+  // Grouping players by category and role based on the new database schema
+  const firstTeam = players.filter(p => p.role === 'player' && (p.squadCategory === 'First Team' || !p.squadCategory));
+  const under17 = players.filter(p => p.role === 'player' && p.squadCategory === 'Under 17');
+  const under13 = players.filter(p => p.role === 'player' && p.squadCategory === 'Under 13');
+  const coachingStaff = players.filter(p => p.role === 'coach');
 
   return (
     <div style={{ 
@@ -192,6 +222,15 @@ export default function Squad({ players = [] }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function PageMessage({ message, onRetry }) {
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', padding: '4rem 1rem', textAlign: 'center' }}>
+      <p>{message}</p>
+      {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
     </div>
   );
 }

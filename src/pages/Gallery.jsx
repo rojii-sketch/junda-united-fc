@@ -1,9 +1,46 @@
 // src/pages/Gallery.jsx
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { fetchJson } from '../api';
 
-export default function Gallery({ gallery = [] }) {
+export default function Gallery() {
   const [selectedImage, setSelectedImage] = useState(null);
+  const [gallery, setGallery] = useState([]);
+  const [status, setStatus] = useState('loading');
+  const [retryCount, setRetryCount] = useState(0);
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+
+    fetchJson('/gallery', controller.signal)
+      .then(data => {
+        setGallery(data);
+        setStatus('success');
+      })
+      .catch(error => {
+        if (error.name === 'AbortError') return;
+        console.error('Error retrieving gallery:', error);
+        setStatus('error');
+      });
+
+    return () => controller.abort();
+  }, [retryCount]);
+
+  if (status === 'loading') {
+    return <PageMessage message="Loading the club gallery..." />;
+  }
+
+  if (status === 'error') {
+    return (
+      <PageMessage
+        message="Unable to load the club gallery."
+        onRetry={() => {
+          setStatus('loading');
+          setRetryCount(count => count + 1);
+        }}
+      />
+    );
+  }
 
   return (
     <div style={{ 
@@ -182,6 +219,15 @@ export default function Gallery({ gallery = [] }) {
           )}
         </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+function PageMessage({ message, onRetry }) {
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', padding: '4rem 1rem', textAlign: 'center' }}>
+      <p>{message}</p>
+      {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
     </div>
   );
 }

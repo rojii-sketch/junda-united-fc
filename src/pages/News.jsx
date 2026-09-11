@@ -3,8 +3,45 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import SEO from '../components/SEO';
 import { motion } from 'framer-motion';
+import { fetchJson } from '../api';
 
-export default function News({ news }) {
+export default function News() {
+  const [news, setNews] = React.useState([]);
+  const [status, setStatus] = React.useState('loading');
+  const [retryCount, setRetryCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+
+    fetchJson('/news', controller.signal)
+      .then(data => {
+        setNews(data);
+        setStatus('success');
+      })
+      .catch(requestError => {
+        if (requestError.name === 'AbortError') return;
+        console.error('Error retrieving news:', requestError);
+        setStatus('error');
+      });
+
+    return () => controller.abort();
+  }, [retryCount]);
+
+  if (status === 'loading') {
+    return <PageMessage message="Loading the latest club news..." />;
+  }
+
+  if (status === 'error') {
+    return (
+      <PageMessage
+        message="Unable to load club news."
+        onRetry={() => {
+          setStatus('loading');
+          setRetryCount(count => count + 1);
+        }}
+      />
+    );
+  }
   
   // 🎯 1. The Smart Share Logic
   const handleShare = async (e, articleId, articleTitle) => {
@@ -20,7 +57,7 @@ export default function News({ news }) {
           text: `Check out this update from Junda United FC!\n\n${articleTitle}`,
           url: articleUrl,
         });
-      } catch (error) {
+      } catch {
         console.log('User cancelled share');
       }
     } else {
@@ -173,6 +210,15 @@ export default function News({ news }) {
         </div>
 
       </div>
+    </div>
+  );
+}
+
+function PageMessage({ message, onRetry }) {
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', padding: '4rem 1rem', textAlign: 'center' }}>
+      <p>{message}</p>
+      {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
     </div>
   );
 }

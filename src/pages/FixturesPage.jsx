@@ -2,8 +2,63 @@
 import React from 'react';
 import StandingsTable from '../components/StandingsTable';
 import { motion } from 'framer-motion';
+import { fetchJson } from '../api';
 
-export default function FixturesPage({ fixtures, standings }) {
+export default function FixturesPage() {
+  const [fixtures, setFixtures] = React.useState([]);
+  const [standings, setStandings] = React.useState([]);
+  const [fixturesStatus, setFixturesStatus] = React.useState('loading');
+  const [standingsStatus, setStandingsStatus] = React.useState('loading');
+  const [standingsError, setStandingsError] = React.useState(null);
+  const [retryCount, setRetryCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+
+    fetchJson('/fixtures', controller.signal)
+      .then(fixturesData => {
+        setFixtures(fixturesData);
+        setFixturesStatus('success');
+      })
+      .catch(error => {
+        if (error.name === 'AbortError') return;
+        console.error('Error retrieving fixtures:', error);
+        setFixturesStatus('error');
+      });
+
+    fetchJson('/standings', controller.signal)
+      .then(standingsData => {
+        setStandings(standingsData);
+        setStandingsStatus('success');
+      })
+      .catch(error => {
+        if (error.name === 'AbortError') return;
+        console.error('Error retrieving standings:', error);
+        setStandingsError(error);
+        setStandingsStatus('error');
+      });
+
+    return () => controller.abort();
+  }, [retryCount]);
+
+  if (fixturesStatus === 'loading') {
+    return <PageMessage message="Loading match fixtures..." />;
+  }
+
+  if (fixturesStatus === 'error') {
+    return (
+      <PageMessage
+        message="Unable to load match fixtures."
+        onRetry={() => {
+          setFixturesStatus('loading');
+          setStandingsStatus('loading');
+          setStandingsError(null);
+          setRetryCount(count => count + 1);
+        }}
+      />
+    );
+  }
+
   const upcomingMatches = fixtures.filter(m => m.status === 'Upcoming' || !m.status);
   const completedMatches = fixtures.filter(m => m.status === 'Completed');
 
@@ -158,10 +213,24 @@ export default function FixturesPage({ fixtures, standings }) {
           <h2 style={{ fontSize: '1.6rem', color: '#fff', borderLeft: '5px solid #3b82f6', paddingLeft: '0.75rem', marginBottom: '1.5rem', letterSpacing: '0.03em' }}>
             League Standings
           </h2>
-          <StandingsTable standings={standings} />
+          <StandingsTable
+            standings={standings}
+            isLoading={standingsStatus === 'loading'}
+            error={standingsError}
+            onRetry={() => setRetryCount(count => count + 1)}
+          />
         </section>
 
       </div>
+    </div>
+  );
+}
+
+function PageMessage({ message, onRetry }) {
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', padding: '4rem 1rem', textAlign: 'center' }}>
+      <p>{message}</p>
+      {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
     </div>
   );
 }

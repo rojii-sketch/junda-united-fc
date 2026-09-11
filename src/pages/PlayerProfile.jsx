@@ -2,21 +2,57 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import SEO from '../components/SEO';
 import { motion } from 'framer-motion';
+import { fetchJson } from '../api';
 
-export default function PlayerProfile({ players }) {
+export default function PlayerProfile() {
   const { id } = useParams();
+  const [players, setPlayers] = React.useState([]);
+  const [status, setStatus] = React.useState('loading');
+  const [retryCount, setRetryCount] = React.useState(0);
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+
+    fetchJson('/players', controller.signal)
+      .then(data => {
+        setPlayers(data);
+        setStatus('success');
+      })
+      .catch(error => {
+        if (error.name === 'AbortError') return;
+        console.error('Error retrieving player profile:', error);
+        setStatus('error');
+      });
+
+    return () => controller.abort();
+  }, [retryCount]);
+
   const player = players.find(p => p._id === id);
+
+  if (status === 'loading') {
+    return <ProfileMessage message="Loading Player Profile..." />;
+  }
+
+  if (status === 'error') {
+    return (
+      <ProfileMessage
+        message="Unable to load this player profile."
+        onRetry={() => {
+          setStatus('loading');
+          setRetryCount(count => count + 1);
+        }}
+      />
+    );
+  }
 
   if (!player) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f172a', color: '#fff' }}>
-        <motion.h2 
-          initial={{ opacity: 0 }} 
-          animate={{ opacity: 1 }} 
-          transition={{ repeat: Infinity, duration: 1, direction: "alternate" }}
-        >
-          Loading Player Profile...
-        </motion.h2>
+      <div className="page-container" style={{ textAlign: 'center', marginTop: '5rem' }}>
+        <h3>Player Not Found</h3>
+        <p>The player you are looking for might have been removed by an administrator.</p>
+        <Link to="/squad" className="submit-btn" style={{ display: 'inline-block', width: 'auto', padding: '0.5rem 1.5rem' }}>
+          Back to Squad
+        </Link>
       </div>
     );
   }
@@ -143,6 +179,15 @@ export default function PlayerProfile({ players }) {
 
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProfileMessage({ message, onRetry }) {
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', backgroundColor: '#0f172a', color: '#fff' }}>
+      <h2>{message}</h2>
+      {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
     </div>
   );
 }
