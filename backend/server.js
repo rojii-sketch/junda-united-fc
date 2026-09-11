@@ -255,8 +255,22 @@ app.put('/api/news/:id', requireAuth, async (req, res) => {
 });
 
 app.delete('/api/news/:id', requireAuth, async (req, res) => {
-  try { await News.findByIdAndDelete(req.params.id); res.json({ message: 'Article wiped clean' }); } 
-  catch { res.status(500).json({ error: 'Internal server error' }); }
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try {
+    const deletedNews = await News.findByIdAndDelete(req.params.id);
+
+    if (!deletedNews) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    return res.json({ message: 'Article wiped clean' });
+  }
+  catch {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
