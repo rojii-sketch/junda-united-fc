@@ -18,7 +18,7 @@ import NodeCache from 'node-cache';
 const apiCache = new NodeCache({ stdTTL: 600 }); // Data lives in memory for 10 minutes (600 seconds)
 dotenv.config();
 
-const requiredAuthEnvironmentVariables = ['ADMIN_USER', 'ADMIN_PASS', 'JWT_SECRET'];
+const requiredAuthEnvironmentVariables = ['JWT_SECRET'];
 const missingAuthEnvironmentVariables = requiredAuthEnvironmentVariables.filter(
   (name) => !process.env[name]?.trim()
 );
@@ -190,19 +190,30 @@ app.post('/api/admin/login', loginRateLimit, async (req, res) => {
 // 🛡️ JWT VERIFICATION BOUNCER
 const requireAuth = (req, res, next) => {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Access Denied. No valid token provided.' });
   }
 
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.slice(7).trim();
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access Denied. No valid token provided.' });
+  }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.admin = decoded; // Attach the VIP info to the request
-    next(); // Let them through!
-  } catch (err) {
-    res.status(401).json({ error: 'Access Denied. Token is invalid or expired.' });
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      algorithms: ['HS256']
+    });
+
+    if (decoded.role !== 'admin' || typeof decoded.username !== 'string' || !decoded.username.trim()) {
+      return res.status(403).json({ error: 'Access Denied. Insufficient privileges.' });
+    }
+
+    req.admin = decoded;
+    return next();
+  } catch {
+    return res.status(401).json({ error: 'Access Denied. Token is invalid or expired.' });
   }
 };
 
