@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
 import jwt from 'jsonwebtoken';
@@ -28,7 +29,7 @@ if (missingAuthEnvironmentVariables.length > 0) {
   );
 }
 
-const { ADMIN_USER, ADMIN_PASS, JWT_SECRET } = process.env;
+const { JWT_SECRET } = process.env;
 const app = express();
 app.set('trust proxy', 1);
 
@@ -158,20 +159,31 @@ app.get('/api/test', (req, res) => {
 // ==========================================================
 // 🔐 SECURE ADMIN LOGIN ENDPOINT
 // ==========================================================
-app.post('/api/admin/login', loginRateLimit, (req, res) => {
-  const { username, password } = req.body;
+app.post('/api/admin/login', loginRateLimit, async (req, res) => {
+  try {
+    const { username, password } = req.body;
 
-  if (username === ADMIN_USER && password === ADMIN_PASS) {
+    const admin = await Admin.findOne({ username });
+    if (!admin) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    const isPasswordCorrect = await bcrypt.compare(password, admin.password);
+    if (!isPasswordCorrect) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
     loginAttempts.delete(req.ip || req.socket.remoteAddress || 'unknown');
     const token = jwt.sign(
-      { username: ADMIN_USER, role: 'admin' }, 
+      { username: admin.username, role: 'admin' },
       JWT_SECRET,
       { expiresIn: '2h' }
     );
     
-    res.json({ success: true, token, message: "Authentication successful" });
-  } else {
-    res.status(401).json({ success: false, message: 'Invalid credentials' });
+    return res.json({ success: true, token, message: "Authentication successful" });
+  } catch (error) {
+    console.error('Database/Authentication error during admin login:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 
