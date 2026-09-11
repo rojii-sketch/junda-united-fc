@@ -221,8 +221,26 @@ app.post('/api/news', requireAuth, async (req, res) => {
 });
 
 app.put('/api/news/:id', requireAuth, async (req, res) => {
-  try { res.json(await News.findByIdAndUpdate(req.params.id, req.body, { new: true })); } 
-  catch { res.status(400).json({ error: 'Invalid request' }); }
+  try {
+    const allowedFields = ['title', 'content', 'imageUrl', 'date'];
+    const updates = Object.fromEntries(
+      Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
+    );
+
+    const updatedNews = await News.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedNews) {
+      return res.status(404).json({ error: 'Article not found' });
+    }
+
+    return res.json(updatedNews);
+  } catch {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
 });
 
 app.delete('/api/news/:id', requireAuth, async (req, res) => {
@@ -244,8 +262,39 @@ app.post('/api/players', requireAuth, async (req, res) => {
 });
 
 app.put('/api/players/:id', requireAuth, async (req, res) => {
-  try { res.json(await Player.findByIdAndUpdate(req.params.id, req.body, { new: true })); } 
-  catch { res.status(400).json({ error: 'Invalid request' }); }
+  try {
+    const allowedFields = [
+      'name',
+      'position',
+      'jerseyNumber',
+      'role',
+      'image',
+      'age',
+      'squadCategory',
+      'appearances',
+      'goals',
+      'bio',
+      'contact'
+    ];
+
+    const updates = Object.fromEntries(
+      Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
+    );
+
+    const updatedPlayer = await Player.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedPlayer) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    return res.json(updatedPlayer);
+  } catch {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
 });
 
 app.delete('/api/players/:id', requireAuth, async (req, res) => {
