@@ -31,3 +31,23 @@ export function transformCloudinaryUrl(url, transformation) {
     `${CLOUDINARY_UPLOAD_PATH}${transformationValue}/`
   );
 }
+
+export function getCloudinarySrcSet(url, widths) {
+  if (
+    typeof url !== 'string' ||
+    !url ||
+    !url.includes('res.cloudinary.com/') ||
+    !url.includes(CLOUDINARY_UPLOAD_PATH) ||
+    !Array.isArray(widths)
+  ) {
+    return '';
+  }
+
+  const uniqueWidths = [...new Set(
+    widths.filter(width => Number.isInteger(width) && width > 0)
+  )].sort((first, second) => first - second);
+
+  return uniqueWidths
+    .map(width => `${transformCloudinaryUrl(url, `f_auto,q_auto,w_${width},c_limit`)} ${width}w`)
+    .join(', ');
+}

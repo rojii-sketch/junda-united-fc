@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import SEO from '../components/SEO';
 import { motion } from 'framer-motion';
 import { fetchJson } from '../api';
-import { transformCloudinaryUrl } from '../utils/cloudinary';
+import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
 
 export default function PlayerProfile() {
   const { id } = useParams();
@@ -128,6 +128,8 @@ export default function PlayerProfile() {
           >
             <img 
               src={transformCloudinaryUrl(player.image || player.imageUrl || placeholderImg, 'f_auto,q_auto,w_1200,c_limit')}
+              srcSet={getCloudinarySrcSet(player.image || player.imageUrl, [480, 768, 1200]) || undefined}
+              sizes="(max-width: 700px) calc(100vw - 2rem), (max-width: 1100px) 50vw, 550px"
               alt={player.name} 
               style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }} 
             />

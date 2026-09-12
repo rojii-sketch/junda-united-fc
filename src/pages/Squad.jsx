@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { fetchJson } from '../api';
-import { transformCloudinaryUrl } from '../utils/cloudinary';
+import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
 
 const placeholderImg = "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=300&auto=format&fit=crop";
 const glassStyle = {
@@ -45,6 +45,8 @@ function PlayerGrid({ roster }) {
             <div style={{ height: '280px', background: '#000', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
               <img
                 src={transformCloudinaryUrl(player.image || placeholderImg, 'f_auto,q_auto,w_600,c_limit')}
+                srcSet={getCloudinarySrcSet(player.image, [320, 480, 640]) || undefined}
+                sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1200px) calc((100vw - 3rem) / 3), 360px"
                 alt={player.name}
                 loading="lazy"
                 style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }}
@@ -201,6 +203,8 @@ export default function Squad() {
                   <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#000', overflow: 'hidden', flexShrink: 0 }}>
                     <img
                       src={transformCloudinaryUrl(coach.image || placeholderImg, 'f_auto,q_auto,w_160,c_limit')}
+                      srcSet={getCloudinarySrcSet(coach.image, [80, 120, 160]) || undefined}
+                      sizes="80px"
                       alt={coach.name}
                       loading="lazy"
                       style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}

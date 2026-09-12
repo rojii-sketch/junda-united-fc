@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchJson } from '../api';
-import { transformCloudinaryUrl } from '../utils/cloudinary';
+import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
 
 export default function Gallery() {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -250,6 +250,8 @@ function GalleryThumbnail({ item }) {
       {isReady ? (
         <img
           src={transformCloudinaryUrl(item.url, 'f_auto,q_auto,w_600,c_limit')}
+          srcSet={getCloudinarySrcSet(item.url, [320, 480, 640]) || undefined}
+          sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1200px) calc((100vw - 3rem) / 3), 360px"
           alt={item.caption || "Junda United Club Asset"}
           style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block', transition: 'transform 0.3s ease' }}
           loading="lazy"

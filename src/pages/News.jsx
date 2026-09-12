@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import SEO from '../components/SEO';
 import { motion } from 'framer-motion';
 import { fetchJson } from '../api';
-import { transformCloudinaryUrl } from '../utils/cloudinary';
+import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
 
 export default function News() {
   const [news, setNews] = React.useState([]);
@@ -166,6 +166,8 @@ export default function News() {
                   <div style={{ width: '100%', height: '200px', overflow: 'hidden', backgroundColor: 'rgba(15, 23, 42, 0.5)' }}>
                     <img
                       src={transformCloudinaryUrl(item.imageUrl, 'f_auto,q_auto,w_600,c_limit')}
+                      srcSet={getCloudinarySrcSet(item.imageUrl, [320, 480, 640]) || undefined}
+                      sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1100px) calc((100vw - 3rem) / 2), 320px"
                       alt={item.title}
                       loading="lazy"
                       decoding="async"

@@ -2,7 +2,7 @@
 import { useParams, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { fetchJson } from '../api';
-import { transformCloudinaryUrl } from '../utils/cloudinary';
+import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
 
 export default function ArticleDetail() {
   const { id } = useParams();
@@ -86,6 +86,8 @@ export default function ArticleDetail() {
           >
             <img 
               src={transformCloudinaryUrl(article.imageUrl, 'f_auto,q_auto,w_1000,c_limit')}
+              srcSet={getCloudinarySrcSet(article.imageUrl, [480, 768, 1000]) || undefined}
+              sizes="(max-width: 500px) calc(100vw - 2rem), 500px"
               alt={article.title} 
               style={{ 
                 width: '100%', 
