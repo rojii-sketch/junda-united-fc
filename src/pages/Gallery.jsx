@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchJson } from '../api';
+import { transformCloudinaryUrl } from '../utils/cloudinary';
 
 export default function Gallery() {
   const [selectedImage, setSelectedImage] = useState(null);
@@ -112,7 +113,7 @@ export default function Gallery() {
                 >
                   {item.type === 'video' ? (
                     <video 
-                      src={item.url} 
+                      src={item.url}
                       controls 
                       muted 
                       loop 
@@ -120,7 +121,7 @@ export default function Gallery() {
                     />
                   ) : (
                     <img 
-                      src={item.url} 
+                      src={transformCloudinaryUrl(item.url, 'f_auto,q_auto,w_600,c_limit')}
                       alt={item.caption || "Junda United Club Asset"} 
                       style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block', transition: 'transform 0.3s ease' }} 
                       loading="lazy"
@@ -199,7 +200,7 @@ export default function Gallery() {
                 style={{ maxWidth: '90vw', maxHeight: '80vh', textAlign: 'center' }}
               >
                 <img 
-                  src={selectedImage.url} 
+                  src={transformCloudinaryUrl(selectedImage.url, 'f_auto,q_auto,w_1600,c_limit')}
                   alt={selectedImage.caption || "Junda United Zoomed Asset"} 
                   style={{ 
                     maxWidth: '100%', 

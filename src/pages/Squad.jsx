@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { fetchJson } from '../api';
+import { transformCloudinaryUrl } from '../utils/cloudinary';
 
 const placeholderImg = "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=300&auto=format&fit=crop";
 const glassStyle = {
@@ -43,8 +44,9 @@ function PlayerGrid({ roster }) {
           >
             <div style={{ height: '280px', background: '#000', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
               <img
-                src={player.image || placeholderImg}
+                src={transformCloudinaryUrl(player.image || placeholderImg, 'f_auto,q_auto,w_600,c_limit')}
                 alt={player.name}
+                loading="lazy"
                 style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }}
               />
 
@@ -197,7 +199,12 @@ export default function Squad() {
               {coachingStaff.map(coach => (
                 <div key={coach._id} style={{ ...glassStyle, borderRadius: '12px', padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
                   <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#000', overflow: 'hidden', flexShrink: 0 }}>
-                    <img src={coach.image || placeholderImg} alt={coach.name} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                    <img
+                      src={transformCloudinaryUrl(coach.image || placeholderImg, 'f_auto,q_auto,w_160,c_limit')}
+                      alt={coach.name}
+                      loading="lazy"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
+                    />
                   </div>
                   <div>
                     <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.2rem', color: '#fff' }}>{coach.name}</h3>
