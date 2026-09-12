@@ -418,10 +418,17 @@ app.get('/api/standings', async (req, res) => {
 
 app.post('/api/standings', requireAuth, mutationRateLimit, async (req, res) => {
   try {
-    const query = { name: req.body.name };
-    const update = req.body;
+    const escapedName = req.body.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const query = { name: { $regex: `^${escapedName}$`, $options: 'i' } };
+    const update = { ...req.body };
+    delete update.name;
     const options = { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true };
-    res.status(201).json(await Standing.findOneAndUpdate(query, update, options));
+    const savedStanding = await Standing.findOneAndUpdate(
+      query,
+      { $set: update, $setOnInsert: { name: req.body.name } },
+      options
+    );
+    res.status(201).json(savedStanding);
   } catch {
     res.status(400).json({ error: 'Invalid request' });
   }

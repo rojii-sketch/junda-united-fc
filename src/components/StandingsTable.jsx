@@ -58,7 +58,7 @@ export default function StandingsTable({ standings = [], isLoading = false, erro
           {standings.map((team) => {
             // Add safety check in case a team name is missing
             const teamName = team.name || "Unknown Team";
-            const isJunda = teamName.includes('Junda United');
+            const isJunda = teamName.toLowerCase().includes('junda united');
             const gd = (team.gf || 0) - (team.ga || 0);
 
             return (

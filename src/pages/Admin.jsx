@@ -282,9 +282,10 @@ export default function Admin({
         return; 
       }
       const savedTeam = await res.json();
-      const existingIdx = (standings || []).findIndex(t => t.name === savedTeam.name);
+      const matchesTeamName = (team) => team.name.toLowerCase() === savedTeam.name.toLowerCase();
+      const existingIdx = (standings || []).findIndex(matchesTeamName);
       if (existingIdx > -1) {
-        setStandings(standings.map(t => t.name === savedTeam.name ? savedTeam : t).sort((a,b) => a.rank - b.rank));
+        setStandings(standings.map(t => matchesTeamName(t) ? savedTeam : t).sort((a,b) => a.rank - b.rank));
       } else {
         setStandings([...(standings || []), savedTeam].sort((a,b) => a.rank - b.rank));
       }
