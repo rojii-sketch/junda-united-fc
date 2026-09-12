@@ -91,7 +91,7 @@ export default function PlayerProfile() {
           maxWidth: '800px',
           height: '85vh',
           // 🎯 UPDATED: Points exactly to the logo in your public folder
-          backgroundImage: 'url("/junda-logo.png")', 
+          backgroundImage: 'url("/junda-logo.webp")',
           backgroundSize: 'contain',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',

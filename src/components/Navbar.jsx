@@ -1,7 +1,7 @@
 // src/components/Navbar.jsx
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import clubLogo from '../assets/logo.png'; // Imports the local logo file
+import clubLogo from '../assets/logo.webp';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);

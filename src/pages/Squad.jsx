@@ -149,7 +149,7 @@ export default function Squad() {
           width: '85vw',
           maxWidth: '800px',
           height: '85vh',
-          backgroundImage: 'url("/junda-logo.png")', 
+          backgroundImage: 'url("/junda-logo.webp")',
           backgroundSize: 'contain',
           backgroundPosition: 'center',
           backgroundRepeat: 'no-repeat',
