@@ -158,14 +158,44 @@ app.use('/api', (req, res, next) => {
   }
 });
 
-// Connect to MongoDB Atlas
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('🚀 Connected smoothly to MongoDB Atlas Cloud Database'))
-  .catch(() => console.error('❌ Database connection failed'));
+let databaseReady = false;
+let initialConnectionSettled = false;
+let startupFailed = false;
+
+mongoose.connection.on('connected', () => {
+  databaseReady = true;
+  console.log('🚀 Connected smoothly to MongoDB Atlas Cloud Database');
+});
+
+mongoose.connection.on('disconnected', () => {
+  databaseReady = false;
+  if (initialConnectionSettled) {
+    console.error('❌ MongoDB connection disconnected');
+  }
+});
+
+mongoose.connection.on('reconnected', () => {
+  databaseReady = true;
+  console.log('🔄 MongoDB connection reconnected');
+});
+
+mongoose.connection.on('error', (error) => {
+  if (initialConnectionSettled && !startupFailed) {
+    console.error(`❌ MongoDB connection error: ${error.name || 'unknown error'}`);
+  }
+});
 
 // Test Endpoint
 app.get('/api/test', (req, res) => {
   res.json({ message: "Junda United API is alive and kicking!" });
+});
+
+app.get('/api/ready', (req, res) => {
+  if (!databaseReady || mongoose.connection.readyState !== 1) {
+    return res.status(503).json({ ready: false });
+  }
+
+  return res.json({ ready: true });
 });
 
 
@@ -461,6 +491,19 @@ app.use((error, req, res, next) => {
   return res.status(500).json({ error: 'Internal server error' });
 });
 
-// Boot listening port execution
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🛰️  Backend API Active on http://localhost:${PORT}`));
+
+async function startServer() {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    initialConnectionSettled = true;
+    app.listen(PORT, () => console.log(`🛰️  Backend API Active on http://localhost:${PORT}`));
+  } catch (error) {
+    startupFailed = true;
+    initialConnectionSettled = true;
+    console.error(`❌ MongoDB startup connection failed: ${error.name || 'unknown error'}`);
+    process.exitCode = 1;
+  }
+}
+
+startServer();
