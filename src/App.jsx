@@ -1,19 +1,20 @@
 // src/App.jsx
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Analytics } from '@vercel/analytics/react';
 
 import Navbar from './components/Navbar';
-import ArticleDetail from './pages/ArticleDetail';
 import News from './pages/News';
 import Footer from './components/Footer';
-import Gallery from './pages/Gallery';
-import Admin from './pages/Admin';
 import './App.css';
-import Players from './pages/Squad';
-import FixturesPage from './pages/FixturesPage'; 
-import PlayerProfile from './pages/PlayerProfile'; 
 import { API_BASE, fetchJson } from './api';
+
+const ArticleDetail = lazy(() => import('./pages/ArticleDetail'));
+const Gallery = lazy(() => import('./pages/Gallery'));
+const Admin = lazy(() => import('./pages/Admin'));
+const Players = lazy(() => import('./pages/Squad'));
+const FixturesPage = lazy(() => import('./pages/FixturesPage'));
+const PlayerProfile = lazy(() => import('./pages/PlayerProfile'));
 
 export default function App() {
   return (
@@ -21,28 +22,38 @@ export default function App() {
       {/* Top Header Strip */}
       <Navbar /> 
 
-      <Routes>
-        <Route path="/" element={<News />} />
-        <Route path="/gallery" element={<Gallery />} />
-        
-        {/* SQUAD ROUTES */}
-        <Route path="/squad" element={<Players />} />
-        <Route path="/squad/:id" element={<PlayerProfile />} />
-        
-        {/* MATCH CENTRE */}
-        <Route path="/fixtures" element={<FixturesPage />} />
-        
-        {/* ADMIN PANEL */}
-        <Route path="/admin" element={<AdminRoute />} />
-        
-        {/* INDIVIDUAL NEWS ARTICLE */}
-        <Route path="/news/:id" element={<ArticleDetail />} />
-      </Routes>
+      <Suspense fallback={<RouteLoadingFallback />}>
+        <Routes>
+          <Route path="/" element={<News />} />
+          <Route path="/gallery" element={<Gallery />} />
+
+          {/* SQUAD ROUTES */}
+          <Route path="/squad" element={<Players />} />
+          <Route path="/squad/:id" element={<PlayerProfile />} />
+
+          {/* MATCH CENTRE */}
+          <Route path="/fixtures" element={<FixturesPage />} />
+
+          {/* ADMIN PANEL */}
+          <Route path="/admin" element={<AdminRoute />} />
+
+          {/* INDIVIDUAL NEWS ARTICLE */}
+          <Route path="/news/:id" element={<ArticleDetail />} />
+        </Routes>
+      </Suspense>
 
       {/* Bottom Brand Anchor */}
       <Footer />
       <Analytics />
     </BrowserRouter>
+  );
+}
+
+function RouteLoadingFallback() {
+  return (
+    <div className="page-container" style={{ textAlign: 'center', marginTop: '5rem' }}>
+      <p>Loading page...</p>
+    </div>
   );
 }
 
