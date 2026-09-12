@@ -120,14 +120,7 @@ export default function Gallery() {
                       style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }}
                     />
                   ) : (
-                    <img 
-                      src={transformCloudinaryUrl(item.url, 'f_auto,q_auto,w_600,c_limit')}
-                      alt={item.caption || "Junda United Club Asset"} 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block', transition: 'transform 0.3s ease' }} 
-                      loading="lazy"
-                      onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
-                      onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
-                    />
+                    <GalleryThumbnail item={item} />
                   )}
                 </div>
 
@@ -220,6 +213,50 @@ export default function Gallery() {
           )}
         </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+function GalleryThumbnail({ item }) {
+  const [isReady, setIsReady] = React.useState(
+    () => typeof IntersectionObserver === 'undefined'
+  );
+  const containerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (isReady) return undefined;
+
+    if (typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setIsReady(true);
+        observer.disconnect();
+      },
+      { rootMargin: '400px 0px' }
+    );
+
+    const container = containerRef.current;
+    if (container) observer.observe(container);
+
+    return () => observer.disconnect();
+  }, [isReady]);
+
+  return (
+    <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
+      {isReady ? (
+        <img
+          src={transformCloudinaryUrl(item.url, 'f_auto,q_auto,w_600,c_limit')}
+          alt={item.caption || "Junda United Club Asset"}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block', transition: 'transform 0.3s ease' }}
+          loading="lazy"
+          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        />
+      ) : null}
     </div>
   );
 }
