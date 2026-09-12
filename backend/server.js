@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { v2 as cloudinary } from 'cloudinary';
 import multer from 'multer';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
 import express from 'express';
 import mongoose from 'mongoose';
@@ -42,29 +43,41 @@ const allowedOrigins = new Set([
   'http://127.0.0.1:4173'
 ]);
 
-const loginAttempts = new Map();
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const LOGIN_MAX_ATTEMPTS = 5;
+const loginKeyGenerator = (req) => ipKeyGenerator(req.ip);
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  keyGenerator: loginKeyGenerator,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({
+    success: false,
+    message: 'Too many login attempts. Try again later.'
+  })
+});
 
-const loginRateLimit = (req, res, next) => {
-  const now = Date.now();
-  const clientKey = req.ip || req.socket.remoteAddress || 'unknown';
-  const current = loginAttempts.get(clientKey);
+const uploadRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({
+    success: false,
+    message: 'Too many upload attempts. Try again later.'
+  })
+});
 
-  if (!current || now - current.windowStart >= LOGIN_WINDOW_MS) {
-    loginAttempts.set(clientKey, { windowStart: now, count: 1 });
-    return next();
-  }
-
-  if (current.count >= LOGIN_MAX_ATTEMPTS) {
-    const retryAfterSeconds = Math.ceil((LOGIN_WINDOW_MS - (now - current.windowStart)) / 1000);
-    res.set('Retry-After', String(retryAfterSeconds));
-    return res.status(429).json({ success: false, message: 'Too many login attempts. Try again later.' });
-  }
-
-  current.count += 1;
-  return next();
-};
+const mutationRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).json({
+    success: false,
+    message: 'Too many requests. Try again later.'
+  })
+});
 
 // Configure Cloudinary
 cloudinary.config({
@@ -173,13 +186,13 @@ app.post('/api/admin/login', loginRateLimit, async (req, res) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    loginAttempts.delete(req.ip || req.socket.remoteAddress || 'unknown');
     const token = jwt.sign(
       { username: admin.username, role: 'admin' },
       JWT_SECRET,
       { expiresIn: '2h' }
     );
     
+    loginRateLimit.resetKey(loginKeyGenerator(req));
     return res.json({ success: true, token, message: "Authentication successful" });
   } catch (error) {
     console.error('Database/Authentication error during admin login:', error);
@@ -226,12 +239,12 @@ app.get('/api/news', async (req, res) => {
   catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
-app.post('/api/news', requireAuth, async (req, res) => {
+app.post('/api/news', requireAuth, mutationRateLimit, async (req, res) => {
   try { res.status(201).json(await new News(req.body).save()); } 
   catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
-app.put('/api/news/:id', requireAuth, async (req, res) => {
+app.put('/api/news/:id', requireAuth, mutationRateLimit, async (req, res) => {
   try {
     const allowedFields = ['title', 'content', 'imageUrl', 'date'];
     const updates = Object.fromEntries(
@@ -254,7 +267,7 @@ app.put('/api/news/:id', requireAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/news/:id', requireAuth, async (req, res) => {
+app.delete('/api/news/:id', requireAuth, mutationRateLimit, async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(400).json({ error: 'Invalid request' });
   }
@@ -281,12 +294,12 @@ app.get('/api/players', async (req, res) => {
   try { res.json(await Player.find()); } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
-app.post('/api/players', requireAuth, async (req, res) => {
+app.post('/api/players', requireAuth, mutationRateLimit, async (req, res) => {
   try { res.status(201).json(await new Player(req.body).save()); } 
   catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
-app.put('/api/players/:id', requireAuth, async (req, res) => {
+app.put('/api/players/:id', requireAuth, mutationRateLimit, async (req, res) => {
   try {
     const allowedFields = [
       'name',
@@ -322,7 +335,7 @@ app.put('/api/players/:id', requireAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/players/:id', requireAuth, async (req, res) => {
+app.delete('/api/players/:id', requireAuth, mutationRateLimit, async (req, res) => {
   try { await Player.findByIdAndDelete(req.params.id); res.json({ message: 'Player removed' }); } 
   catch { res.status(500).json({ error: 'Internal server error' }); }
 });
@@ -335,12 +348,12 @@ app.get('/api/gallery', async (req, res) => {
   try { res.json(await Gallery.find()); } catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
-app.post('/api/gallery', requireAuth, async (req, res) => {
+app.post('/api/gallery', requireAuth, mutationRateLimit, async (req, res) => {
   try { res.status(201).json(await new Gallery(req.body).save()); } 
   catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
-app.delete('/api/gallery/:id', requireAuth, async (req, res) => {
+app.delete('/api/gallery/:id', requireAuth, mutationRateLimit, async (req, res) => {
   try { await Gallery.findByIdAndDelete(req.params.id); res.json({ message: 'Asset removed' }); } 
   catch { res.status(500).json({ error: 'Internal server error' }); }
 });
@@ -354,12 +367,12 @@ app.get('/api/fixtures', async (req, res) => {
   catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
-app.post('/api/fixtures', requireAuth, async (req, res) => {
+app.post('/api/fixtures', requireAuth, mutationRateLimit, async (req, res) => {
   try { res.status(201).json(await new Fixture(req.body).save()); } 
   catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
-app.delete('/api/fixtures/:id', requireAuth, async (req, res) => {
+app.delete('/api/fixtures/:id', requireAuth, mutationRateLimit, async (req, res) => {
   try { await Fixture.findByIdAndDelete(req.params.id); res.json({ message: 'Fixture removed' }); } 
   catch { res.status(500).json({ error: 'Internal server error' }); }
 });
@@ -373,7 +386,7 @@ app.get('/api/standings', async (req, res) => {
   catch { res.status(500).json({ error: 'Internal server error' }); }
 });
 
-app.post('/api/standings', requireAuth, async (req, res) => {
+app.post('/api/standings', requireAuth, mutationRateLimit, async (req, res) => {
   try {
     const query = { name: req.body.name };
     const update = req.body;
@@ -384,7 +397,7 @@ app.post('/api/standings', requireAuth, async (req, res) => {
   }
 });
 
-app.delete('/api/standings/:id', requireAuth, async (req, res) => {
+app.delete('/api/standings/:id', requireAuth, mutationRateLimit, async (req, res) => {
   try { await Standing.findByIdAndDelete(req.params.id); res.json({ message: 'Team removed' }); } 
   catch { res.status(500).json({ error: 'Internal server error' }); }
 });
@@ -403,7 +416,7 @@ const hasValidImageSignature = (file) => {
   return false;
 };
 
-app.post('/api/upload', requireAuth, upload.single('image'), (req, res) => {
+app.post('/api/upload', uploadRateLimit, requireAuth, upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No file uploaded.' });
   }
