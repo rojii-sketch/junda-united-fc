@@ -37,6 +37,7 @@ export default function Admin({
   });
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmittingFixture, setIsSubmittingFixture] = useState(false);
   const [editingNewsId, setEditingNewsId] = useState(null);
   const [editingPlayerId, setEditingPlayerId] = useState(null);
 
@@ -240,12 +241,15 @@ export default function Admin({
 
   const handleAddFixture = async (e) => {
     e.preventDefault();
+    if (isSubmittingFixture) return;
     if (!fixtureForm.opponent || !fixtureForm.matchDate) return alert('Opponent Name and Match Date are required!');
     const submissionPayload = {
       ...fixtureForm,
       jundaScore: fixtureForm.status === 'Completed' ? Number(fixtureForm.jundaScore) : 0,
       opponentScore: fixtureForm.status === 'Completed' ? Number(fixtureForm.opponentScore) : 0,
     };
+
+    setIsSubmittingFixture(true);
     try {
       const response = await fetch(`${API_BASE}/fixtures`, {
         method: 'POST',
@@ -254,11 +258,16 @@ export default function Admin({
       });
       if (response.ok) {
         const savedFixture = await response.json();
-        setFixtures([savedFixture, ...fixtures]);
+        setFixtures(current => [savedFixture, ...current]);
         setFixtureForm({ opponent: '', matchDate: '', kickoffTime: '16:00 EAT', venue: 'Junda Grounds, Mishomoroni', status: 'Upcoming', jundaScore: 0, opponentScore: 0, isHomeMatch: true });
         alert('🏅 Match context logged successfully!');
       }
-    } catch (err) { console.error(err); alert('Failed to record fixture details.'); }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to record fixture details.');
+    } finally {
+      setIsSubmittingFixture(false);
+    }
   };
 
   const handleStandingSubmit = async (e) => {
@@ -460,7 +469,7 @@ export default function Admin({
                 <div><label>Opponent Score</label><input type="number" min="0" value={fixtureForm.opponentScore} onChange={e => setFixtureForm({...fixtureForm, opponentScore: e.target.value})} style={{ width: '70px' }} /></div>
               </div>
             )}
-            <button type="submit" className="submit-btn">Save Match Entry</button>
+            <button type="submit" className="submit-btn" disabled={isSubmittingFixture}>Save Match Entry</button>
           </form>
 
           <div style={listContainerStyle}>

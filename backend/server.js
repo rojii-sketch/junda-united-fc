@@ -130,9 +130,10 @@ app.use(express.json({ limit: '100kb' })); // Allows server to read bounded JSON
 // 🛡️ THE MAGIC CACHE SHIELD
 app.use('/api', (req, res, next) => {
   if (req.method === 'GET') {
-    res.set('Cache-Control', 'public, max-age=600');
-
     const key = req.originalUrl;
+    const isFixtureListRequest = key === '/api/fixtures' || key.startsWith('/api/fixtures?');
+    res.set('Cache-Control', isFixtureListRequest ? 'no-store' : 'public, max-age=600');
+
     const cachedData = apiCache.get(key);
 
     if (cachedData) {
@@ -403,8 +404,21 @@ app.post('/api/fixtures', requireAuth, mutationRateLimit, async (req, res) => {
 });
 
 app.delete('/api/fixtures/:id', requireAuth, mutationRateLimit, async (req, res) => {
-  try { await Fixture.findByIdAndDelete(req.params.id); res.json({ message: 'Fixture removed' }); } 
-  catch { res.status(500).json({ error: 'Internal server error' }); }
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ error: 'Invalid fixture ID' });
+  }
+
+  try {
+    const deletedFixture = await Fixture.findByIdAndDelete(req.params.id);
+
+    if (!deletedFixture) {
+      return res.status(404).json({ error: 'Fixture not found' });
+    }
+
+    return res.json({ message: 'Fixture removed' });
+  } catch {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
