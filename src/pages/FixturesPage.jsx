@@ -1,7 +1,6 @@
-// src/pages/FixturesPage.jsx
 import React from 'react';
 import StandingsTable from '../components/StandingsTable';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { fetchJson } from '../api';
 
 export default function FixturesPage() {
@@ -9,11 +8,16 @@ export default function FixturesPage() {
   const [standings, setStandings] = React.useState([]);
   const [fixturesStatus, setFixturesStatus] = React.useState('loading');
   const [standingsStatus, setStandingsStatus] = React.useState('loading');
+  const [fixturesError, setFixturesError] = React.useState(null);
   const [standingsError, setStandingsError] = React.useState(null);
-  const [retryCount, setRetryCount] = React.useState(0);
+  const [fixturesRetryCount, setFixturesRetryCount] = React.useState(0);
+  const [standingsRetryCount, setStandingsRetryCount] = React.useState(0);
 
   React.useEffect(() => {
     const controller = new AbortController();
+
+    setFixturesStatus('loading');
+    setFixturesError(null);
 
     fetchJson('/fixtures', controller.signal)
       .then(fixturesData => {
@@ -23,8 +27,18 @@ export default function FixturesPage() {
       .catch(error => {
         if (error.name === 'AbortError') return;
         console.error('Error retrieving fixtures:', error);
+        setFixturesError(error);
         setFixturesStatus('error');
       });
+
+    return () => controller.abort();
+  }, [fixturesRetryCount]);
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+
+    setStandingsStatus('loading');
+    setStandingsError(null);
 
     fetchJson('/standings', controller.signal)
       .then(standingsData => {
@@ -39,198 +53,229 @@ export default function FixturesPage() {
       });
 
     return () => controller.abort();
-  }, [retryCount]);
+  }, [standingsRetryCount]);
 
-  if (fixturesStatus === 'loading') {
-    return <PageMessage message="Loading match fixtures..." />;
-  }
+  const upcomingMatches = fixtures.filter(match => match.status === 'Upcoming' || !match.status);
+  const completedMatches = fixtures.filter(match => match.status === 'Completed');
+  const nextFixture = getNextFixture(upcomingMatches);
+  const remainingUpcomingMatches = nextFixture
+    ? upcomingMatches.filter(match => match._id !== nextFixture._id)
+    : [];
 
-  if (fixturesStatus === 'error') {
-    return (
-      <PageMessage
-        message="Unable to load match fixtures."
-        onRetry={() => {
-          setFixturesStatus('loading');
-          setStandingsStatus('loading');
-          setStandingsError(null);
-          setRetryCount(count => count + 1);
-        }}
-      />
-    );
-  }
-
-  const upcomingMatches = fixtures.filter(m => m.status === 'Upcoming' || !m.status);
-  const completedMatches = fixtures.filter(m => m.status === 'Completed');
-
-  // Reusable style for the "Glass" transparent effect
-  const glassStyle = {
-    background: 'rgba(30, 41, 59, 0.4)',
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
-  };
+  const retryFixtures = () => setFixturesRetryCount(count => count + 1);
+  const retryStandings = () => setStandingsRetryCount(count => count + 1);
 
   return (
-    <div style={{ 
-      position: 'relative', 
-      minHeight: '100vh', 
-      backgroundColor: '#0f172a', 
-      color: '#f8fafc', 
-      padding: '4rem 1rem',
-      overflow: 'hidden'
-    }}>
-      
-      {/* 🎯 Club Logo Background Watermark */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.8, x: '-50%', y: '-50%' }}
-        animate={{ opacity: 0.15, scale: 1, x: '-50%', y: '-50%' }}
-        transition={{ duration: 1.5, ease: "easeOut" }}
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          width: '85vw',
-          maxWidth: '800px',
-          height: '85vh',
-          backgroundImage: 'url("/junda-logo.webp")',
-          backgroundSize: 'contain',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          zIndex: 0,
-          pointerEvents: 'none'
-        }}
-      />
+    <div className="public-ui public-match-centre">
+      <ClubWatermark />
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '1000px', margin: '0 auto' }}>
-        
-        {/* HERO HEADER */}
-        <div style={{ textAlign: 'center', marginBottom: '3.5rem', ...glassStyle, padding: '2.5rem 1rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-          <h1 style={{ fontSize: '2.5rem', margin: '0 0 0.5rem 0', fontWeight: '800', letterSpacing: '0.02em', color: '#fff' }}>MATCH CENTRE</h1>
-          <p style={{ margin: '0', fontSize: '1.1rem', color: '#94a3b8', fontWeight: '500' }}>Follow Junda United FC’s Journey Across the Campaign</p>
-        </div>
+      <main className="public-match-centre__container">
+        <header className="public-match-centre__header public-glass">
+          <span className="public-match-centre__eyebrow">Junda United FC</span>
+          <h1 className="public-match-centre__title">Match Centre</h1>
+          <p className="public-match-centre__intro">
+            Follow fixtures, results, and the latest league standings across the campaign.
+          </p>
+        </header>
 
-        {/* 🗓️ SECTION 1: UPCOMING FIXTURES */}
-        <section style={{ marginBottom: '4rem' }}>
-          <h2 style={{ fontSize: '1.6rem', color: '#fff', borderLeft: '5px solid #3b82f6', paddingLeft: '0.75rem', marginBottom: '1.5rem', letterSpacing: '0.03em' }}>
-            Upcoming Fixtures
-          </h2>
-          
-          {upcomingMatches.length === 0 ? (
-            <div style={{ ...glassStyle, padding: '2.5rem', textAlign: 'center', borderRadius: '12px', color: '#94a3b8' }}>
-              No upcoming matches scheduled at the moment. Check back soon for updates from management!
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gap: '1.25rem' }}>
-              {upcomingMatches.map((match) => (
-                <div key={match._id} style={{ ...glassStyle, borderRadius: '12px', padding: '1.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
-                  
-                  {/* Match Identity & Date */}
-                  <div style={{ minWidth: '180px' }}>
-                    <span style={{ display: 'inline-block', background: match.isHomeMatch ? 'rgba(59, 130, 246, 0.2)' : 'rgba(100, 116, 139, 0.2)', color: match.isHomeMatch ? '#60a5fa' : '#94a3b8', fontSize: '0.75rem', padding: '0.25rem 0.6rem', borderRadius: '4px', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-                      {match.isHomeMatch ? '🏠 Home' : '🚌 Away'}
-                    </span>
-                    <div style={{ fontWeight: '700', color: '#fff', fontSize: '1.1rem' }}>{match.matchDate}</div>
-                    <div style={{ color: '#94a3b8', fontSize: '0.85rem', marginTop: '0.15rem' }}>⏰ Kickoff: {match.kickoffTime}</div>
-                  </div>
-
-                  {/* Match Up Visual Banner */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', margin: '1rem 0', flex: '1', justifyContent: 'center', minWidth: '280px' }}>
-                    <div style={{ fontWeight: '800', fontSize: '1.2rem', color: '#e2e8f0', textAlign: 'right', width: '40%' }}>Junda United</div>
-                    <div style={{ background: 'rgba(15, 23, 42, 0.6)', color: '#60a5fa', padding: '0.4rem 1rem', borderRadius: '20px', fontWeight: '800', fontSize: '0.9rem', letterSpacing: '0.05em', border: '1px solid rgba(255,255,255,0.05)' }}>VS</div>
-                    <div style={{ fontWeight: '800', fontSize: '1.2rem', color: '#e2e8f0', textAlign: 'left', width: '40%' }}>{match.opponent}</div>
-                  </div>
-
-                  {/* Location Venue Details */}
-                  <div style={{ textAlign: 'right', minWidth: '160px' }}>
-                    <div style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: '500' }}>📍 Stadium / Venue</div>
-                    <div style={{ fontWeight: '600', color: '#cbd5e1', fontSize: '0.95rem', marginTop: '0.15rem' }}>{match.venue}</div>
-                  </div>
-
-                </div>
+        <section className="public-match-centre__section" aria-labelledby="upcoming-fixtures-heading">
+          <SectionHeading id="upcoming-fixtures-heading" accent="blue">
+            Upcoming fixtures
+          </SectionHeading>
+          {fixturesStatus === 'loading' && (
+            <SectionStatus message="Loading upcoming fixtures..." />
+          )}
+          {fixturesStatus === 'error' && (
+            <SectionStatus
+              message="Unable to load upcoming fixtures."
+              onRetry={retryFixtures}
+              tone="error"
+            />
+          )}
+          {fixturesStatus === 'success' && upcomingMatches.length === 0 && (
+            <EmptyState message="No upcoming matches are scheduled at the moment. Check back soon for updates from management." />
+          )}
+          {fixturesStatus === 'success' && nextFixture && (
+            <div className="public-match-centre__fixture-list">
+              <FixtureCard match={nextFixture} featured />
+              {remainingUpcomingMatches.map(match => (
+                <FixtureCard key={match._id} match={match} />
               ))}
             </div>
           )}
         </section>
 
-        {/* 🏆 SECTION 2: RECENT RESULTS */}
-        <section style={{ marginBottom: '4rem' }}>
-          <h2 style={{ fontSize: '1.6rem', color: '#fff', borderLeft: '5px solid #10b981', paddingLeft: '0.75rem', marginBottom: '1.5rem', letterSpacing: '0.03em' }}>
-            Latest Results
-          </h2>
-
-          {completedMatches.length === 0 ? (
-            <div style={{ ...glassStyle, padding: '2.5rem', textAlign: 'center', borderRadius: '12px', color: '#94a3b8' }}>
-              No match results recorded in the portal yet.
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gap: '1.25rem' }}>
-              {completedMatches.map((match) => {
-                const isWin = match.jundaScore > match.opponentScore;
-                const isDraw = match.jundaScore === match.opponentScore;
-                
-                return (
-                  <div key={match._id} style={{ ...glassStyle, borderRadius: '12px', padding: '1.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,0.2)', position: 'relative', overflow: 'hidden' }}>
-                    
-                    {/* Left Outcome Badge Indicator */}
-                    <div style={{ position: 'absolute', left: '0', top: '0', bottom: '0', width: '5px', background: isWin ? '#10b981' : isDraw ? '#64748b' : '#ef4444' }} />
-
-                    {/* Date and Location Context */}
-                    <div style={{ minWidth: '150px', paddingLeft: '0.5rem' }}>
-                      <div style={{ fontWeight: '600', color: '#cbd5e1', fontSize: '0.9rem' }}>{match.matchDate}</div>
-                      <div style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '0.15rem' }}>{match.venue}</div>
-                    </div>
-
-                    {/* Scoreboard Block */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', margin: '1rem 0', flex: '1', justifyContent: 'center', minWidth: '300px' }}>
-                      <div style={{ fontWeight: '700', fontSize: '1.15rem', color: '#e2e8f0', textAlign: 'right', width: '35%' }}>Junda United</div>
-                      
-                      {/* Floating Center Score Banner */}
-                      <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(15, 23, 42, 0.8)', color: '#fff', borderRadius: '6px', padding: '0.4rem 1.2rem', gap: '0.75rem', fontWeight: '800', fontSize: '1.25rem', border: '1px solid rgba(255,255,255,0.05)', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
-                        <span style={{ color: isWin ? '#10b981' : '#fff' }}>{match.jundaScore}</span>
-                        <span style={{ color: '#64748b', fontSize: '0.9rem' }}>-</span>
-                        <span>{match.opponentScore}</span>
-                      </div>
-
-                      <div style={{ fontWeight: '700', fontSize: '1.15rem', color: '#e2e8f0', textAlign: 'left', width: '35%' }}>{match.opponent}</div>
-                    </div>
-
-                    {/* Outcome Win/Loss Text Label */}
-                    <div style={{ textAlign: 'right', minWidth: '120px' }}>
-                      <span style={{ display: 'inline-block', padding: '0.3rem 0.75rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', background: isWin ? 'rgba(16, 185, 129, 0.2)' : isDraw ? 'rgba(100, 116, 139, 0.2)' : 'rgba(239, 68, 68, 0.2)', color: isWin ? '#34d399' : isDraw ? '#cbd5e1' : '#f87171', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        {isWin ? '🏆 Victory' : isDraw ? '🤝 Draw' : 'Defeat'}
-                      </span>
-                    </div>
-
-                  </div>
-                );
-              })}
+        <section className="public-match-centre__section" aria-labelledby="latest-results-heading">
+          <SectionHeading id="latest-results-heading" accent="green">
+            Latest results
+          </SectionHeading>
+          {fixturesStatus === 'loading' && (
+            <SectionStatus message="Loading recent results..." />
+          )}
+          {fixturesStatus === 'error' && (
+            <SectionStatus
+              message="Unable to load recent results."
+              onRetry={retryFixtures}
+              tone="error"
+            />
+          )}
+          {fixturesStatus === 'success' && completedMatches.length === 0 && (
+            <EmptyState message="No match results have been recorded yet." />
+          )}
+          {fixturesStatus === 'success' && completedMatches.length > 0 && (
+            <div className="public-match-centre__fixture-list">
+              {completedMatches.map(match => (
+                <ResultCard key={match._id} match={match} />
+              ))}
             </div>
           )}
         </section>
 
-        {/* 🎯 Standings Section */}
-        <section id="standings" style={{ marginTop: '4rem', scrollMarginTop: '2rem' }}>
-          <h2 style={{ fontSize: '1.6rem', color: '#fff', borderLeft: '5px solid #3b82f6', paddingLeft: '0.75rem', marginBottom: '1.5rem', letterSpacing: '0.03em' }}>
-            League Standings
-          </h2>
+        <section
+          id="standings"
+          className="public-match-centre__section public-match-centre__standings-section"
+          aria-labelledby="league-standings-heading"
+        >
+          <SectionHeading id="league-standings-heading" accent="blue">
+            League standings
+          </SectionHeading>
           <StandingsTable
             standings={standings}
             isLoading={standingsStatus === 'loading'}
             error={standingsError}
-            onRetry={() => setRetryCount(count => count + 1)}
+            onRetry={retryStandings}
+            headingId="league-standings-heading"
           />
         </section>
-
-      </div>
+      </main>
     </div>
   );
 }
 
-function PageMessage({ message, onRetry }) {
+function getNextFixture(matches) {
+  if (matches.length === 0) return null;
+
+  const parsedMatches = matches.map(match => ({
+    match,
+    date: parseMatchDate(match.matchDate),
+  }));
+
+  const validMatches = parsedMatches.filter(item => item.date);
+  if (validMatches.length === 0) return matches[0];
+
+  return validMatches.reduce((earliest, current) => (
+    current.date < earliest.date ? current : earliest
+  )).match;
+}
+
+function parseMatchDate(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+
+  const trimmedValue = value.trim();
+  const dayMonthYear = trimmedValue.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (dayMonthYear) {
+    const [, day, month, year] = dayMonthYear;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return date.getFullYear() === Number(year)
+      && date.getMonth() === Number(month) - 1
+      && date.getDate() === Number(day)
+      ? date
+      : null;
+  }
+
+  const parsedTime = Date.parse(trimmedValue);
+  return Number.isNaN(parsedTime) ? null : new Date(parsedTime);
+}
+
+function SectionHeading({ id, accent, children }) {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', padding: '4rem 1rem', textAlign: 'center' }}>
+    <h2 id={id} className={`public-match-centre__section-heading public-match-centre__section-heading--${accent}`}>
+      {children}
+    </h2>
+  );
+}
+
+function FixtureCard({ match, featured = false }) {
+  return (
+    <article className={`public-match-centre__match-card${featured ? ' public-match-centre__featured-match' : ''}`}>
+      <div className="public-match-centre__match-meta">
+        {featured && <span className="public-match-centre__featured-label">Next match</span>}
+        <span className={`public-match-centre__venue-badge${match.isHomeMatch ? ' public-match-centre__venue-badge--home' : ''}`}>
+          {match.isHomeMatch ? 'Home match' : 'Away match'}
+        </span>
+        <strong>{match.matchDate}</strong>
+        <span>Kickoff: {match.kickoffTime}</span>
+      </div>
+      <div className="public-match-centre__teams" aria-label={`Junda United versus ${match.opponent}`}>
+        <strong>Junda United</strong>
+        <span className="public-match-centre__vs">VS</span>
+        <strong>{match.opponent}</strong>
+      </div>
+      <div className="public-match-centre__venue">
+        <span>Venue</span>
+        <strong>{match.venue}</strong>
+      </div>
+    </article>
+  );
+}
+
+function ResultCard({ match }) {
+  const isWin = match.jundaScore > match.opponentScore;
+  const isDraw = match.jundaScore === match.opponentScore;
+  const result = isWin ? 'Victory' : isDraw ? 'Draw' : 'Defeat';
+  const resultClass = isWin ? 'win' : isDraw ? 'draw' : 'loss';
+
+  return (
+    <article className={`public-match-centre__match-card public-match-centre__result-card public-match-centre__result-card--${resultClass}`}>
+      <div className="public-match-centre__result-meta">
+        <strong>{match.matchDate}</strong>
+        <span>{match.venue}</span>
+      </div>
+      <div className="public-match-centre__scoreboard" aria-label={`${result}: Junda United ${match.jundaScore}, ${match.opponent} ${match.opponentScore}`}>
+        <strong>Junda United</strong>
+        <div className="public-match-centre__score">
+          <span>{match.jundaScore}</span>
+          <small>-</small>
+          <span>{match.opponentScore}</span>
+        </div>
+        <strong>{match.opponent}</strong>
+      </div>
+      <span className="public-match-centre__result-label">{result}</span>
+    </article>
+  );
+}
+
+function ClubWatermark() {
+  const shouldReduceMotion = useReducedMotion();
+
+  return (
+    <motion.div
+      className="public-match-centre__watermark"
+      initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 0.1, scale: 1 }}
+      transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.8, ease: 'easeOut' }}
+      aria-hidden="true"
+    />
+  );
+}
+
+function SectionStatus({ message, onRetry, tone = 'neutral' }) {
+  return (
+    <div className={`public-match-centre__status public-match-centre__status--${tone}`} role={tone === 'error' ? 'alert' : undefined}>
       <p>{message}</p>
-      {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
+      {onRetry && (
+        <button type="button" className="public-match-centre__retry" onClick={onRetry}>
+          Try again
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EmptyState({ message }) {
+  return (
+    <div className="public-match-centre__empty">
+      <p>{message}</p>
     </div>
   );
 }
