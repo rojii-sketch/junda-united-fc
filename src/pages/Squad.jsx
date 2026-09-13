@@ -1,87 +1,141 @@
-// src/pages/Squad.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import SEO from '../components/SEO';
+import { motion, useReducedMotion } from 'framer-motion';
 import { fetchJson } from '../api';
 import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
 
-const placeholderImg = "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=300&auto=format&fit=crop";
-const glassStyle = {
-  background: 'rgba(30, 41, 59, 0.4)',
-  backdropFilter: 'blur(8px)',
-  WebkitBackdropFilter: 'blur(8px)',
-  border: '1px solid rgba(255, 255, 255, 0.05)',
-};
+const placeholderImg = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=300&auto=format&fit=crop';
 
-function PlayerGrid({ roster }) {
+function hasValue(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function PlayerGrid({ roster, view }) {
+  if (view === 'list') {
+    return (
+      <div className="public-squad__list">
+        <div className="public-squad__list-table-wrap">
+          <table className="public-squad__list-table">
+            <caption className="public-squad__sr-only">Squad player statistics</caption>
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Player</th>
+                <th scope="col">Position</th>
+                <th scope="col">Age</th>
+                <th scope="col">Apps</th>
+                <th scope="col">Goals</th>
+                {roster.some(player => hasValue(player.assists)) && <th scope="col">Assists</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {roster.map(player => (
+                <tr key={player._id}>
+                  <td>{hasValue(player.jerseyNumber) ? player.jerseyNumber : '-'}</td>
+                  <th scope="row">
+                    <Link to={`/squad/${player._id}`}>{player.name}</Link>
+                  </th>
+                  <td>{player.position || 'Position not listed'}</td>
+                  <td>{hasValue(player.age) ? player.age : '-'}</td>
+                  <td>{hasValue(player.appearances) ? player.appearances : '0'}</td>
+                  <td>{hasValue(player.goals) ? player.goals : '0'}</td>
+                  {roster.some(item => hasValue(item.assists)) && (
+                    <td>{hasValue(player.assists) ? player.assists : '-'}</td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="public-squad__list-mobile">
+          {roster.map(player => (
+            <Link to={`/squad/${player._id}`} className="public-squad__list-mobile-row" key={player._id}>
+              <span className="public-squad__list-number">{hasValue(player.jerseyNumber) ? player.jerseyNumber : '-'}</span>
+              <span className="public-squad__list-mobile-main">
+                <strong>{player.name}</strong>
+                <span>{player.position || 'Position not listed'}</span>
+              </span>
+              <span className="public-squad__list-mobile-stats">
+                <span><small>Apps</small>{hasValue(player.appearances) ? player.appearances : '0'}</span>
+                <span><small>Goals</small>{hasValue(player.goals) ? player.goals : '0'}</span>
+                {roster.some(item => hasValue(item.assists)) && (
+                  <span><small>Assists</small>{hasValue(player.assists) ? player.assists : '-'}</span>
+                )}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem', marginBottom: '4rem' }}>
+    <div className="public-squad__player-grid">
       {roster.map(player => (
-        <Link
-          to={`/squad/${player._id}`}
-          key={player._id}
-          style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-        >
-          <div
-            style={{
-              ...glassStyle,
-              borderRadius: '12px',
-              overflow: 'hidden',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-              display: 'flex',
-              flexDirection: 'column',
-              height: '100%',
-              transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-            }}
-            onMouseOver={e => {
-              e.currentTarget.style.transform = 'translateY(-5px)';
-              e.currentTarget.style.boxShadow = '0 12px 25px rgba(0,0,0,0.4)';
-            }}
-            onMouseOut={e => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 15px rgba(0,0,0,0.2)';
-            }}
-          >
-            <div style={{ height: '280px', background: '#000', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+        <Link to={`/squad/${player._id}`} className="public-squad__player-link" key={player._id}>
+          <article className="public-squad__player-card">
+            <div className="public-squad__player-media">
               <img
                 src={transformCloudinaryUrl(player.image || placeholderImg, 'f_auto,q_auto,w_600,c_limit')}
                 srcSet={getCloudinarySrcSet(player.image, [320, 480, 640]) || undefined}
-                sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1200px) calc((100vw - 3rem) / 3), 360px"
+                sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1024px) calc((100vw - 3rem) / 2), 360px"
                 alt={player.name}
                 loading="lazy"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top', display: 'block' }}
+                decoding="async"
               />
-
-              {player.jerseyNumber && (
-                <div style={{ position: 'absolute', top: '15px', right: '15px', background: '#2563eb', color: '#fff', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', fontSize: '1.4rem', fontWeight: '900', boxShadow: '0 2px 8px rgba(0,0,0,0.3)' }}>
-                  {player.jerseyNumber}
-                </div>
-              )}
+              <span className="public-squad__player-number">
+                {hasValue(player.jerseyNumber) ? player.jerseyNumber : '—'}
+              </span>
             </div>
-
-            <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.4rem', color: '#fff', fontWeight: '800' }}>{player.name}</h3>
-              <p style={{ margin: '0 0 1rem 0', color: '#60a5fa', fontWeight: '700', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '0.05em' }}>{player.position}</p>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', background: 'rgba(15, 23, 42, 0.6)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', textAlign: 'center' }}>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Age</div>
-                  <div style={{ fontSize: '0.95rem', color: '#e2e8f0', fontWeight: '700' }}>{player.age || '-'}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Apps</div>
-                  <div style={{ fontSize: '0.95rem', color: '#e2e8f0', fontWeight: '700' }}>{player.appearances || 0}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold' }}>Goals</div>
-                  <div style={{ fontSize: '0.95rem', color: '#e2e8f0', fontWeight: '700' }}>{player.goals || 0}</div>
-                </div>
+            <div className="public-squad__player-content">
+              <h3>{player.name}</h3>
+              <p className="public-squad__player-position">{player.position || 'Position not listed'}</p>
+              <div className="public-squad__player-stats">
+                <Stat label="Age" value={hasValue(player.age) ? player.age : '-'} />
+                <Stat label="Apps" value={hasValue(player.appearances) ? player.appearances : '0'} />
+                <Stat label="Goals" value={hasValue(player.goals) ? player.goals : '0'} />
+                {hasValue(player.assists) && <Stat label="Assists" value={player.assists} />}
               </div>
-
-              {player.bio && <p style={{ margin: 0, fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.5' }}>{player.bio}</p>}
+              {player.bio && <p className="public-squad__player-bio">{player.bio}</p>}
             </div>
-          </div>
+          </article>
         </Link>
+      ))}
+    </div>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <span>
+      <small>{label}</small>
+      <strong>{value}</strong>
+    </span>
+  );
+}
+
+function StaffGrid({ staff }) {
+  return (
+    <div className="public-squad__staff-grid">
+      {staff.map(member => (
+        <article className="public-squad__staff-card public-glass" key={member._id}>
+          <div className="public-squad__staff-media">
+            <img
+              src={transformCloudinaryUrl(member.image || placeholderImg, 'f_auto,q_auto,w_160,c_limit')}
+              srcSet={getCloudinarySrcSet(member.image, [80, 120, 160]) || undefined}
+              sizes="80px"
+              alt={member.name}
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+          <div className="public-squad__staff-content">
+            <h3>{member.name}</h3>
+            <p>{member.position || 'Staff member'}</p>
+            {member.contact && <span>Contact: {member.contact}</span>}
+          </div>
+        </article>
       ))}
     </div>
   );
@@ -91,6 +145,8 @@ export default function Squad() {
   const [players, setPlayers] = React.useState([]);
   const [status, setStatus] = React.useState('loading');
   const [retryCount, setRetryCount] = React.useState(0);
+  const [view, setView] = React.useState('grid');
+  const shouldReduceMotion = useReducedMotion();
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -125,123 +181,106 @@ export default function Squad() {
     );
   }
 
-  // Grouping players by category and role based on the new database schema
-  const firstTeam = players.filter(p => p.role === 'player' && (p.squadCategory === 'First Team' || !p.squadCategory));
-  const under17 = players.filter(p => p.role === 'player' && p.squadCategory === 'Under 17');
-  const under13 = players.filter(p => p.role === 'player' && p.squadCategory === 'Under 13');
-  const coachingStaff = players.filter(p => p.role === 'coach');
+  const firstTeam = players.filter(player => player.role === 'player' && (player.squadCategory === 'First Team' || !player.squadCategory));
+  const under17 = players.filter(player => player.role === 'player' && player.squadCategory === 'Under 17');
+  const under13 = players.filter(player => player.role === 'player' && player.squadCategory === 'Under 13');
+  const coachingStaff = players.filter(player => player.role === 'coach');
+  const playerGroups = [
+    { title: 'First Team', description: 'Senior squad', roster: firstTeam, accent: 'blue' },
+    { title: 'Under 17', description: 'Academy squad', roster: under17, accent: 'green' },
+    { title: 'Under 13', description: 'Academy squad', roster: under13, accent: 'gold' },
+  ];
 
   return (
-    <div style={{ 
-      position: 'relative', 
-      minHeight: '100vh', 
-      backgroundColor: '#0f172a', 
-      color: '#f8fafc', 
-      padding: '4rem 1rem',
-      overflow: 'hidden'
-    }}>
-      
-      {/* 🎯 Club Logo Background Watermark */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.8, x: '-50%', y: '-50%' }}
-        animate={{ opacity: 0.15, scale: 1, x: '-50%', y: '-50%' }}
-        transition={{ duration: 1.5, ease: "easeOut" }}
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          width: '85vw',
-          maxWidth: '800px',
-          height: '85vh',
-          backgroundImage: 'url("/junda-logo.webp")',
-          backgroundSize: 'contain',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          zIndex: 0,
-          pointerEvents: 'none'
-        }}
+    <div className="public-ui public-squad">
+      <SEO
+        title="Squad"
+        description="Meet the Junda United FC first team and youth academy squads."
+      />
+      <motion.div
+        className="public-squad__watermark"
+        initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 0.08, scale: 1 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.8, ease: 'easeOut' }}
+        aria-hidden="true"
       />
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '1200px', margin: '0 auto' }}>
-        
-        <div style={{ textAlign: 'center', marginBottom: '4rem', ...glassStyle, padding: '3rem 1rem', borderRadius: '16px' }}>
-          <h1 style={{ fontSize: '2.5rem', margin: '0 0 0.5rem 0', fontWeight: '800', color: '#fff' }}>CLUB ROSTER</h1>
-          <p style={{ margin: '0', color: '#94a3b8', fontSize: '1.1rem' }}>First Team and Youth Academy Squads</p>
-        </div>
+      <main className="public-container public-squad__container">
+        <header className="public-squad__header public-glass">
+          <span className="public-squad__eyebrow">Junda United FC</span>
+          <h1>Club roster</h1>
+          <p>Meet the players, academy prospects, and technical staff representing Junda United FC.</p>
+        </header>
 
-        {/* FIRST TEAM */}
-        {firstTeam.length > 0 && (
-          <>
-            <h2 style={{ fontSize: '1.8rem', color: '#fff', borderBottom: '3px solid #3b82f6', paddingBottom: '0.5rem', marginBottom: '2rem' }}>First Team</h2>
-            <PlayerGrid roster={firstTeam} />
-          </>
-        )}
-
-        {/* UNDER 17 ACADEMY */}
-        {under17.length > 0 && (
-          <>
-            <h2 style={{ fontSize: '1.8rem', color: '#fff', borderBottom: '3px solid #10b981', paddingBottom: '0.5rem', marginBottom: '2rem' }}>Under 17 Academy</h2>
-            <PlayerGrid roster={under17} />
-          </>
-        )}
-
-        {/* UNDER 13 ACADEMY */}
-        {under13.length > 0 && (
-          <>
-            <h2 style={{ fontSize: '1.8rem', color: '#fff', borderBottom: '3px solid #f59e0b', paddingBottom: '0.5rem', marginBottom: '2rem' }}>Under 13 Academy</h2>
-            <PlayerGrid roster={under13} />
-          </>
-        )}
-
-        {/* COACHING STAFF */}
-        {coachingStaff.length > 0 && (
-          <>
-            <h2 style={{ fontSize: '1.8rem', color: '#fff', borderBottom: '3px solid #64748b', paddingBottom: '0.5rem', marginBottom: '2rem' }}>Coaching & Staff</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '2rem' }}>
-              {coachingStaff.map(coach => (
-                <div key={coach._id} style={{ ...glassStyle, borderRadius: '12px', padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
-                  <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#000', overflow: 'hidden', flexShrink: 0 }}>
-                    <img
-                      src={transformCloudinaryUrl(coach.image || placeholderImg, 'f_auto,q_auto,w_160,c_limit')}
-                      srcSet={getCloudinarySrcSet(coach.image, [80, 120, 160]) || undefined}
-                      sizes="80px"
-                      alt={coach.name}
-                      loading="lazy"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }}
-                    />
-                  </div>
-                  <div>
-                    <h3 style={{ margin: '0 0 0.25rem 0', fontSize: '1.2rem', color: '#fff' }}>{coach.name}</h3>
-                    <p style={{ margin: 0, color: '#94a3b8', fontWeight: '600' }}>{coach.position}</p>
-                    
-                    {coach.contact && (
-                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: '#60a5fa', fontWeight: 'bold' }}>
-                        ✉️ {coach.contact}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
+        <section className="public-squad__players" aria-labelledby="players-heading">
+          <div className="public-squad__section-heading-row">
+            <div>
+              <span className="public-squad__section-label">Players</span>
+              <h2 id="players-heading" className="public-section-heading">The squad</h2>
             </div>
-          </>
-        )}
-
-        {/* EMPTY STATE */}
-        {players.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#94a3b8' }}>
-            Roster updates are currently being processed. Check back shortly.
+            <div className="public-squad__view-toggle" aria-label="Roster view">
+              <button type="button" className={view === 'grid' ? 'is-active' : ''} aria-pressed={view === 'grid'} onClick={() => setView('grid')}>
+                Grid
+              </button>
+              <button type="button" className={view === 'list' ? 'is-active' : ''} aria-pressed={view === 'list'} onClick={() => setView('list')}>
+                List
+              </button>
+            </div>
           </div>
+
+          {playerGroups.map(group => group.roster.length > 0 && (
+            <section className="public-squad__category" aria-labelledby={`${group.accent}-squad-heading`} key={group.title}>
+              <div
+                id={`${group.accent}-squad-heading`}
+                className={`public-squad__category-heading public-squad__category-heading--${group.accent}`}
+              >
+                <div>
+                  <span>{group.title}</span>
+                  <p>{group.description}</p>
+                </div>
+                <strong>{group.roster.length} players</strong>
+              </div>
+              <PlayerGrid roster={group.roster} view={view} />
+            </section>
+          ))}
+
+          {players.length === 0 && (
+            <div className="public-squad__empty" role="status">
+              <p>Roster updates are currently being processed. Check back shortly.</p>
+            </div>
+          )}
+        </section>
+
+        {coachingStaff.length > 0 && (
+          <section className="public-squad__staff-section" aria-labelledby="staff-heading">
+            <div className="public-squad__section-heading-row">
+              <div>
+                <span className="public-squad__section-label">Administration &amp; technical staff</span>
+                <h2 id="staff-heading" className="public-section-heading">The people behind the team</h2>
+              </div>
+            </div>
+            <StaffGrid staff={coachingStaff} />
+          </section>
         )}
-      </div>
+      </main>
     </div>
   );
 }
 
 function PageMessage({ message, onRetry }) {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', padding: '4rem 1rem', textAlign: 'center' }}>
-      <p>{message}</p>
-      {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
+    <div className="public-ui public-squad public-squad__state-page">
+      <div className="public-container">
+        <section className="public-squad__state public-glass" role={onRetry ? 'alert' : 'status'}>
+          <span className="public-squad__eyebrow">Junda United FC Squad</span>
+          <h1>{message}</h1>
+          {onRetry && (
+            <button type="button" className="public-squad__retry" onClick={onRetry}>
+              Try again
+            </button>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

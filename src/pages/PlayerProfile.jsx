@@ -1,15 +1,22 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import SEO from '../components/SEO';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { fetchJson } from '../api';
 import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
+
+const placeholderImg = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=500&auto=format&fit=crop';
+
+function hasValue(value) {
+  return value !== undefined && value !== null && value !== '';
+}
 
 export default function PlayerProfile() {
   const { id } = useParams();
   const [players, setPlayers] = React.useState([]);
   const [status, setStatus] = React.useState('loading');
   const [retryCount, setRetryCount] = React.useState(0);
+  const shouldReduceMotion = useReducedMotion();
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -28,10 +35,10 @@ export default function PlayerProfile() {
     return () => controller.abort();
   }, [retryCount]);
 
-  const player = players.find(p => p._id === id);
+  const player = players.find(item => item._id === id);
 
   if (status === 'loading') {
-    return <ProfileMessage message="Loading Player Profile..." />;
+    return <ProfileMessage message="Loading player profile..." />;
   }
 
   if (status === 'error') {
@@ -48,149 +55,122 @@ export default function PlayerProfile() {
 
   if (!player) {
     return (
-      <div className="page-container" style={{ textAlign: 'center', marginTop: '5rem' }}>
-        <h3>Player Not Found</h3>
-        <p>The player you are looking for might have been removed by an administrator.</p>
-        <Link to="/squad" className="submit-btn" style={{ display: 'inline-block', width: 'auto', padding: '0.5rem 1.5rem' }}>
-          Back to Squad
-        </Link>
+      <div className="public-ui public-player-profile">
+        <main className="public-container public-player-profile__state-page">
+          <section className="public-player-profile__state public-glass" aria-labelledby="player-not-found-heading">
+            <span className="public-player-profile__eyebrow">Junda United FC Squad</span>
+            <h1 id="player-not-found-heading">Player not found</h1>
+            <p>The player you are looking for might have been removed by an administrator.</p>
+            <Link to="/squad" className="public-player-profile__back-link">Back to Squad</Link>
+          </section>
+        </main>
       </div>
     );
   }
 
-  const placeholderImg = "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=500&auto=format&fit=crop";
-
-  // Reusable style for the "Glass" transparent effect on the data cards
-  const glassStyle = {
-    background: 'rgba(30, 41, 59, 0.4)', // Semi-transparent dark blue
-    backdropFilter: 'blur(8px)',         // Blurs the background logo behind the card
-    WebkitBackdropFilter: 'blur(8px)',   // Safari support
-    border: '1px solid rgba(255, 255, 255, 0.05)', // Subtle glowing edge
-  };
+  const playerImage = transformCloudinaryUrl(
+    player.image || player.imageUrl || placeholderImg,
+    'f_auto,q_auto,w_1200,c_limit'
+  );
 
   return (
-    <div style={{ 
-      position: 'relative', 
-      minHeight: '100vh', 
-      backgroundColor: '#0f172a', // Keeps the base dark
-      color: '#f8fafc', 
-      padding: '4rem 1rem',
-      overflow: 'hidden'
-    }}>
-      <SEO title={`${player.name} - Profile`} description={`Official player profile for ${player.name}, Junda United FC.`} />
-
-      {/* 🎯 ANIMATION 1: The Background Logo is now centered, larger, and fixed in place */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.8, x: '-50%', y: '-50%' }}
-        animate={{ opacity: 0.15, scale: 1, x: '-50%', y: '-50%' }} // Increased opacity slightly
-        transition={{ duration: 1.5, ease: "easeOut" }}
-        style={{
-          position: 'fixed', // Stays in place even if the user scrolls
-          top: '50%',
-          left: '50%',
-          width: '85vw', // Responsive width based on screen size
-          maxWidth: '800px',
-          height: '85vh',
-          // 🎯 UPDATED: Points exactly to the logo in your public folder
-          backgroundImage: 'url("/junda-logo.webp")',
-          backgroundSize: 'contain',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          zIndex: 0,
-          pointerEvents: 'none'
-        }}
+    <div className="public-ui public-player-profile">
+      <SEO
+        title={`${player.name} - Profile`}
+        description={`Official player profile for ${player.name}, Junda United FC.`}
+        image={playerImage}
+      />
+      <motion.div
+        className="public-player-profile__watermark"
+        initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 0.08, scale: 1 }}
+        transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.8, ease: 'easeOut' }}
+        aria-hidden="true"
       />
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '1100px', margin: '0 auto' }}>
-        
-        <Link to="/squad" style={{ color: '#60a5fa', textDecoration: 'none', marginBottom: '2rem', display: 'inline-block', fontWeight: 'bold' }}>
-          ← Back to Squad
+      <main className="public-container public-player-profile__container">
+        <Link to="/squad" className="public-player-profile__back-link">
+          <span aria-hidden="true">←</span> Back to Squad
         </Link>
 
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
-          gap: '4rem', 
-          alignItems: 'start' 
-        }}>
-          
-          {/* ANIMATION 2: Player Photo slides in smoothly from the left */}
-          <motion.div 
-            initial={{ opacity: 0, x: -50 }}
+        <article className="public-player-profile__hero">
+          <motion.figure
+            className="public-player-profile__image-card public-glass"
+            initial={shouldReduceMotion ? false : { opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            style={{ 
-              borderRadius: '16px', 
-              overflow: 'hidden', 
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-              border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}
+            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.5, ease: 'easeOut' }}
           >
-            <img 
-              src={transformCloudinaryUrl(player.image || player.imageUrl || placeholderImg, 'f_auto,q_auto,w_1200,c_limit')}
+            <img
+              src={playerImage}
               srcSet={getCloudinarySrcSet(player.image || player.imageUrl, [480, 768, 1200]) || undefined}
               sizes="(max-width: 700px) calc(100vw - 2rem), (max-width: 1100px) 50vw, 550px"
-              alt={player.name} 
-              style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }} 
+              alt={player.name}
+              loading="eager"
+              decoding="async"
             />
-          </motion.div>
+          </motion.figure>
 
-          {/* ANIMATION 3: Player Details slide up from the bottom */}
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            className="public-player-profile__details"
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.5, delay: 0.1, ease: 'easeOut' }}
           >
-            {/* Header: Name and Number */}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', borderBottom: '2px solid rgba(255, 255, 255, 0.1)', paddingBottom: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: '3rem', margin: 0, color: '#fff', lineHeight: '1.1' }}>{player.name}</h1>
-              {player.jerseyNumber && (
-                <span style={{ fontSize: '3rem', color: '#3b82f6', fontWeight: '900' }}>#{player.jerseyNumber}</span>
-              )}
+            <header className="public-player-profile__header">
+              <span className="public-player-profile__eyebrow">Junda United FC player</span>
+              <div className="public-player-profile__name-row">
+                <h1>{player.name}</h1>
+                {hasValue(player.jerseyNumber) && <span className="public-player-profile__number">#{player.jerseyNumber}</span>}
+              </div>
+              <p className="public-player-profile__position">{player.position || 'Position not listed'}</p>
+              {player.squadCategory && <p className="public-player-profile__category">{player.squadCategory}</p>}
+            </header>
+
+            <div className="public-player-profile__stats" aria-label="Player statistics">
+              <ProfileStat label="Age" value={player.age} />
+              <ProfileStat label="Appearances" value={player.appearances} />
+              <ProfileStat label="Goals" value={player.goals} />
+              <ProfileStat label="Assists" value={player.assists} />
             </div>
 
-            {/* Stats Grid - 🎯 Applied Glassmorphism styling */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2.5rem' }}>
-              <div style={{ ...glassStyle, padding: '1rem', borderRadius: '8px' }}>
-                <span style={{ display: 'block', color: '#94a3b8', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Position</span>
-                <strong style={{ fontSize: '1.2rem', color: '#e2e8f0' }}>{player.position || 'N/A'}</strong>
-              </div>
-              <div style={{ ...glassStyle, padding: '1rem', borderRadius: '8px' }}>
-                <span style={{ display: 'block', color: '#94a3b8', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Age</span>
-                <strong style={{ fontSize: '1.2rem', color: '#e2e8f0' }}>{player.age || '-'}</strong>
-              </div>
-              <div style={{ ...glassStyle, padding: '1rem', borderRadius: '8px' }}>
-                <span style={{ display: 'block', color: '#94a3b8', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Appearances</span>
-                <strong style={{ fontSize: '1.2rem', color: '#e2e8f0' }}>{player.appearances || '0'}</strong>
-              </div>
-              <div style={{ ...glassStyle, padding: '1rem', borderRadius: '8px' }}>
-                <span style={{ display: 'block', color: '#94a3b8', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Goals</span>
-                <strong style={{ fontSize: '1.2rem', color: '#e2e8f0' }}>{player.goals || '0'}</strong>
-              </div>
-            </div>
-
-            {/* Biography - 🎯 Applied Glassmorphism styling */}
             {player.bio && (
-              <div style={{ ...glassStyle, padding: '1.5rem', borderRadius: '12px', borderLeft: '4px solid #3b82f6' }}>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#fff' }}>About the Player</h3>
-                <p style={{ color: '#cbd5e1', lineHeight: '1.7', margin: 0, fontSize: '1.05rem', whiteSpace: 'pre-wrap' }}>
-                  {player.bio}
-                </p>
-              </div>
+              <section className="public-player-profile__bio" aria-labelledby="player-bio-heading">
+                <h2 id="player-bio-heading">About the player</h2>
+                <p>{player.bio}</p>
+              </section>
             )}
           </motion.div>
+        </article>
+      </main>
+    </div>
+  );
+}
 
-        </div>
-      </div>
+function ProfileStat({ label, value }) {
+  if (!hasValue(value)) return null;
+
+  return (
+    <div className="public-player-profile__stat">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
 
 function ProfileMessage({ message, onRetry }) {
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', backgroundColor: '#0f172a', color: '#fff' }}>
-      <h2>{message}</h2>
-      {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
+    <div className="public-ui public-player-profile public-player-profile__state-page">
+      <div className="public-container">
+        <section className="public-player-profile__state public-glass" role={onRetry ? 'alert' : 'status'}>
+          <span className="public-player-profile__eyebrow">Junda United FC Squad</span>
+          <h1>{message}</h1>
+          {onRetry && (
+            <button type="button" className="public-player-profile__retry" onClick={onRetry}>
+              Try again
+            </button>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
