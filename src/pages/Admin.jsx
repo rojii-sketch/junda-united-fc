@@ -38,6 +38,11 @@ export default function Admin({
 
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmittingFixture, setIsSubmittingFixture] = useState(false);
+  const [isSubmittingNews, setIsSubmittingNews] = useState(false);
+  const [isSubmittingPlayer, setIsSubmittingPlayer] = useState(false);
+  const [isSubmittingGallery, setIsSubmittingGallery] = useState(false);
+  const [isSubmittingStanding, setIsSubmittingStanding] = useState(false);
+  const [deletingItemKey, setDeletingItemKey] = useState(null);
   const [editingNewsId, setEditingNewsId] = useState(null);
   const [editingPlayerId, setEditingPlayerId] = useState(null);
 
@@ -49,6 +54,7 @@ export default function Admin({
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
+    if (isLoggingIn) return;
     if (!usernameInput || !passwordInput) return alert('Both username and password are required!');
     
     // 🎯 Trigger the loading animation
@@ -88,6 +94,7 @@ export default function Admin({
   };
 
   const handleFileUpload = async (e, formType) => {
+    if (isUploading) return;
     const file = e.target.files[0];
     if (!file) return;
 
@@ -121,10 +128,13 @@ export default function Admin({
 
   const handleAddNews = async (e) => {
     e.preventDefault();
+    if (isSubmittingNews) return;
     if (!newsForm.title || !newsForm.content) return alert('Title and Content are required!');
+
+    setIsSubmittingNews(true);
     
-    if (editingNewsId) {
-      try {
+    try {
+      if (editingNewsId) {
         const updatePayload = { title: newsForm.title, content: newsForm.content, imageUrl: newsForm.imageUrl, date: newsForm.date };
         const response = await fetch(`${API_BASE}/news/${editingNewsId}`, {
           method: 'PUT',
@@ -141,12 +151,8 @@ export default function Admin({
         } else {
           alert('Failed to update: Session may have expired. Please log in again.');
         }
-      } catch (err) {
-        console.error(err); alert('Failed to update article.');
-      }
-    } else {
-      const newArticle = { title: newsForm.title, content: newsForm.content, imageUrl: newsForm.imageUrl, date: newsForm.date || new Date().toISOString().split('T')[0] };
-      try {
+      } else {
+        const newArticle = { title: newsForm.title, content: newsForm.content, imageUrl: newsForm.imageUrl, date: newsForm.date || new Date().toISOString().split('T')[0] };
         const response = await fetch(`${API_BASE}/news`, {
           method: 'POST',
           headers: getAuthHeaders(),
@@ -159,9 +165,12 @@ export default function Admin({
           setNewsForm({ title: '', content: '', imageUrl: '', date: '' });
           alert('Article published cleanly to cloud database!');
         }
-      } catch (err) {
-        console.error(err); alert('Failed to save article.');
       }
+    } catch (err) {
+      console.error(err);
+      alert(editingNewsId ? 'Failed to update article.' : 'Failed to save article.');
+    } finally {
+      setIsSubmittingNews(false);
     }
   };
 
@@ -173,10 +182,13 @@ export default function Admin({
 
   const handleAddPlayer = async (e) => {
     e.preventDefault();
+    if (isSubmittingPlayer) return;
     if (!playerForm.name || !playerForm.position) return alert('Name and Position are required!');
+
+    setIsSubmittingPlayer(true);
     
-    if (editingPlayerId) {
-      try {
+    try {
+      if (editingPlayerId) {
         const response = await fetch(`${API_BASE}/players/${editingPlayerId}`, {
           method: 'PUT',
           headers: getAuthHeaders(),
@@ -189,11 +201,7 @@ export default function Admin({
           setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '', age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' });
           alert('Squad member updated successfully!');
         }
-      } catch (err) {
-        console.error(err); alert('Failed to update roster member.');
-      }
-    } else {
-      try {
+      } else {
         const response = await fetch(`${API_BASE}/players`, {
           method: 'POST',
           headers: getAuthHeaders(),
@@ -205,9 +213,12 @@ export default function Admin({
           setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '', age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' });
           alert('Squad member registered successfully!');
         }
-      } catch (err) {
-        console.error(err); alert('Failed to add roster member.');
       }
+    } catch (err) {
+      console.error(err);
+      alert(editingPlayerId ? 'Failed to update roster member.' : 'Failed to add roster member.');
+    } finally {
+      setIsSubmittingPlayer(false);
     }
   };
 
@@ -223,7 +234,10 @@ export default function Admin({
 
   const handleAddGallery = async (e) => {
     e.preventDefault();
+    if (isSubmittingGallery) return;
     if (!galleryForm.url) return alert('Media URL is required!');
+
+    setIsSubmittingGallery(true);
     try {
       const response = await fetch(`${API_BASE}/gallery`, {
         method: 'POST',
@@ -236,7 +250,12 @@ export default function Admin({
         setGalleryForm({ type: 'image', url: '', caption: '' });
         alert('Media asset uploaded successfully!');
       }
-    } catch (err) { console.error(err); alert('Failed to save gallery asset.'); }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to save gallery asset.');
+    } finally {
+      setIsSubmittingGallery(false);
+    }
   };
 
   const handleAddFixture = async (e) => {
@@ -272,6 +291,7 @@ export default function Admin({
 
   const handleStandingSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmittingStanding) return;
     if (!standingForm.name) return alert('Club Name is required!');
     const parsedForm = standingForm.formInput ? standingForm.formInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s !== "") : [];
     const payload = {
@@ -279,6 +299,8 @@ export default function Admin({
       w: Number(standingForm.w) || 0, d: Number(standingForm.d) || 0, l: Number(standingForm.l) || 0,
       gf: Number(standingForm.gf) || 0, ga: Number(standingForm.ga) || 0, pts: Number(standingForm.pts) || 0, form: parsedForm
     };
+
+    setIsSubmittingStanding(true);
     try {
       const res = await fetch(`${API_BASE}/standings`, {
         method: 'POST',
@@ -300,11 +322,24 @@ export default function Admin({
       }
       setStandingForm({ rank: 1, name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W' });
       alert('✅ Standings matrix row updated smoothly!');
-    } catch (err) { console.error(err); alert('Network error communicating with the server.'); }
+    } catch (err) {
+      console.error(err);
+      alert('Network error communicating with the server.');
+    } finally {
+      setIsSubmittingStanding(false);
+    }
   };
 
   const deleteItem = async (id, type) => {
-    if (!window.confirm('Are you sure you want to delete this item permanently?')) return;
+    const key = `${type}:${id}`;
+    if (deletingItemKey === key) return;
+    setDeletingItemKey(key);
+
+    if (!window.confirm('Are you sure you want to delete this item permanently?')) {
+      setDeletingItemKey(null);
+      return;
+    }
+
     try {
       const response = await fetch(`${API_BASE}/${type}/${id}`, {
         method: 'DELETE',
@@ -320,7 +355,12 @@ export default function Admin({
       } else {
         alert('Failed to delete: Session may have expired. Please log in again.');
       }
-    } catch (err) { console.error(err); alert('Failed to drop record from backend.'); }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to drop record from backend.');
+    } finally {
+      setDeletingItemKey(null);
+    }
   };
 
   // 🎯 UPDATE: The login form button now reacts to the `isLoggingIn` state
@@ -421,10 +461,10 @@ export default function Admin({
           <form onSubmit={handleAddNews} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
             <h3>{editingNewsId ? "📝 Edit Article" : "Post New Article"}</h3>
             <div className="form-group"><label>Article Title</label><input type="text" placeholder="e.g. Match Victory!" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} /></div>
-            <div className="form-group"><label>Cover Image</label><input type="file" accept="image/*" onChange={e => handleFileUpload(e, 'news')} /></div>
+            <div className="form-group"><label>Cover Image</label><input type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'news')} /></div>
             <div className="form-group"><label>Publish Date (Optional)</label><input type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} /></div>
             <div className="form-group"><label>Article Content</label><textarea placeholder="Write article text here..." rows="4" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea></div>
-            <button type="submit" className="submit-btn">{editingNewsId ? "Save Changes" : "Publish Post"}</button>
+            <button type="submit" className="submit-btn" disabled={isSubmittingNews}>{editingNewsId ? "Save Changes" : "Publish Post"}</button>
             {editingNewsId && (
               <button type="button" onClick={() => { setEditingNewsId(null); setNewsForm({ title: '', content: '', imageUrl: '', date: '' }); }} style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>Cancel Edit</button>
             )}
@@ -440,7 +480,7 @@ export default function Admin({
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditNews(item)}>Edit</button>
-                  <button type="button" className="delete-btn" onClick={() => deleteItem(item._id, 'news')}>Delete</button>
+                  <button type="button" className="delete-btn" disabled={deletingItemKey === `news:${item._id}`} onClick={() => deleteItem(item._id, 'news')}>Delete</button>
                 </div>
               </div>
             ))}
@@ -480,7 +520,7 @@ export default function Admin({
                   <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Junda United vs {item.opponent}</strong>
                   <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.matchDate} • {item.status === 'Completed' ? `Score: ${item.jundaScore}-${item.opponentScore}` : 'Upcoming'}</p>
                 </div>
-                <button type="button" className="delete-btn" onClick={() => deleteItem(item._id, 'fixtures')}>Delete</button>
+                <button type="button" className="delete-btn" disabled={deletingItemKey === `fixtures:${item._id}`} onClick={() => deleteItem(item._id, 'fixtures')}>Delete</button>
               </div>
             ))}
             {(!fixtures || fixtures.length === 0) && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No fixtures logged yet.</div>}
@@ -517,6 +557,7 @@ export default function Admin({
               onMouseOut={(e) => { e.target.style.background = '#10b981'; e.target.style.transform = 'translateY(0)'; }}
               onMouseDown={(e) => { e.target.style.transform = 'scale(0.98)'; }}
               onMouseUp={(e) => { e.target.style.transform = 'translateY(-2px)'; }}
+              disabled={isSubmittingStanding}
             >
               💾 Save Team Metrics
             </button>
@@ -530,7 +571,7 @@ export default function Admin({
                   <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.rank}. {team.name}</strong>
                   <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span> • Record: P {team.p} W {team.w} D {team.d} L {team.l}</p>
                 </div>
-                <button type="button" className="delete-btn" onClick={() => deleteItem(team._id, 'standings')}>Wipe</button>
+                <button type="button" className="delete-btn" disabled={deletingItemKey === `standings:${team._id}`} onClick={() => deleteItem(team._id, 'standings')}>Wipe</button>
               </div>
             ))}
             {(!standings || standings.length === 0) && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No teams logged yet.</div>}
@@ -573,13 +614,13 @@ export default function Admin({
                   <option value="coach">Coach / Staff</option>
                 </select>
               </div>
-              <div className="form-group" style={{ flex: '1 1 200px' }}><label>Profile Photo</label><input type="file" accept="image/*" onChange={e => handleFileUpload(e, 'squad')} /></div>
+              <div className="form-group" style={{ flex: '1 1 200px' }}><label>Profile Photo</label><input type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'squad')} /></div>
             </div>
 
             <button 
               type="submit" 
               className="submit-btn" 
-              disabled={isUploading} 
+              disabled={isSubmittingPlayer}
               style={{ background: '#2563eb', color: '#fff', width: '100%', padding: '0.85rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', transition: 'all 0.2s ease', marginTop: '1rem' }}
               onMouseOver={(e) => { e.target.style.background = '#1d4ed8'; e.target.style.transform = 'translateY(-2px)'; }}
               onMouseOut={(e) => { e.target.style.background = '#2563eb'; e.target.style.transform = 'translateY(0)'; }}
@@ -611,7 +652,7 @@ export default function Admin({
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditPlayer(item)}>Edit</button>
-                  <button type="button" className="delete-btn" onClick={() => deleteItem(item._id, 'players')}>Delete</button>
+                  <button type="button" className="delete-btn" disabled={deletingItemKey === `players:${item._id}`} onClick={() => deleteItem(item._id, 'players')}>Delete</button>
                 </div>
               </div>
             ))}
@@ -625,10 +666,10 @@ export default function Admin({
         <div className="admin-panel" style={panelStyle}>
           <form onSubmit={handleAddGallery} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
             <h3>Upload Media Item</h3>
-            <div className="form-group"><label>Select Media File</label><input type="file" accept="image/*" onChange={e => handleFileUpload(e, 'gallery')} /></div>
+            <div className="form-group"><label>Select Media File</label><input type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'gallery')} /></div>
             <div className="form-group"><label>Description / Caption</label><input type="text" placeholder="Highlights" value={galleryForm.caption} onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})} /></div>
             <div className="form-group"><label>Media Type</label><select value={galleryForm.type} onChange={e => setGalleryForm({...galleryForm, type: e.target.value})}><option value="image">Photo Upload</option><option value="video">Video Loop</option></select></div>
-            <button type="submit" className="submit-btn" disabled={isUploading}>Add to Gallery</button>
+            <button type="submit" className="submit-btn" disabled={isSubmittingGallery}>Add to Gallery</button>
           </form>
 
           <div style={listContainerStyle}>
@@ -639,7 +680,7 @@ export default function Admin({
                   <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.caption || "Untitled"}</strong>
                   <p className="subtext type-tag" style={{ marginTop: '0.35rem', display: 'inline-block' }}>{item.type}</p>
                 </div>
-                <button className="delete-btn" onClick={() => deleteItem(item._id, 'gallery')}>Delete</button>
+                <button type="button" className="delete-btn" disabled={deletingItemKey === `gallery:${item._id}`} onClick={() => deleteItem(item._id, 'gallery')}>Delete</button>
               </div>
             ))}
             {gallery.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No media uploaded yet.</div>}
