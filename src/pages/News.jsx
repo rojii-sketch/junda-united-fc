@@ -1,4 +1,3 @@
-// src/pages/News.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import SEO from '../components/SEO';
@@ -43,15 +42,11 @@ export default function News() {
       />
     );
   }
-  
-  // 🎯 1. The Smart Share Logic
-  const handleShare = async (e, articleId, articleTitle) => {
-    e.preventDefault(); // 🛑 Crucial: Stops the click from triggering the <Link> wrapper
-    
+
+  const handleShare = async (articleId, articleTitle) => {
     const articleUrl = `${window.location.origin}/news/${articleId}`;
 
     if (navigator.share) {
-      // Mobile: Native share menu
       try {
         await navigator.share({
           title: articleTitle,
@@ -62,172 +57,213 @@ export default function News() {
         console.log('User cancelled share');
       }
     } else {
-      // Desktop: Fallback to WhatsApp Web
       const message = `Check out this update from Junda United FC!\n\n${articleTitle}\n${articleUrl}`;
       window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
     }
   };
 
-  // Reusable style for the "Glass" transparent effect
-  const glassStyle = {
-    background: 'rgba(30, 41, 59, 0.4)',
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
-    border: '1px solid rgba(255, 255, 255, 0.05)',
-  };
-
   if (news.length === 0) {
     return (
-      <div style={{ position: 'relative', minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', padding: '4rem 1rem', overflow: 'hidden' }}>
-        <SEO 
-          title="News & Updates" 
+      <div className="public-ui public-news">
+        <SEO
+          title="News & Updates"
           description="Latest match reports, club announcements, and squad news from Junda United FC."
         />
-        {/* Background Watermark */}
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.8, x: '-50%', y: '-50%' }}
-          animate={{ opacity: 0.15, scale: 1, x: '-50%', y: '-50%' }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-          style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            width: '85vw',
-            maxWidth: '800px',
-            height: '85vh',
-            backgroundImage: 'url("/junda-logo.webp")',
-            backgroundSize: 'contain',
-            backgroundPosition: 'center',
-            backgroundRepeat: 'no-repeat',
-            zIndex: 0,
-            pointerEvents: 'none'
-          }}
-        />
-        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '800px', margin: '4rem auto', ...glassStyle, padding: '3rem', borderRadius: '16px' }}>
-          <h2 style={{ color: '#fff', fontSize: '1.8rem', marginBottom: '0.5rem' }}>No news posted yet.</h2>
-          <p style={{ color: '#94a3b8' }}>Check back later for match updates and official announcements from Junda United FC!</p>
+        <ClubWatermark />
+        <div className="public-container public-news__empty-container">
+          <div className="public-news__empty public-glass">
+            <span className="public-news__eyebrow">Junda United FC</span>
+            <h1 className="public-news__empty-title">No news posted yet.</h1>
+            <p>Check back later for match updates and official announcements from Junda United FC.</p>
+          </div>
         </div>
       </div>
     );
   }
 
+  const featuredArticle = getFeaturedArticle(news);
+  const remainingArticles = news.filter(item => item._id !== featuredArticle._id);
+
   return (
-    <div style={{ 
-      position: 'relative', 
-      minHeight: '100vh', 
-      backgroundColor: '#0f172a', 
-      color: '#f8fafc', 
-      padding: '4rem 1rem',
-      overflow: 'hidden'
-    }}>
-      <SEO 
-        title="News & Updates" 
+    <div className="public-ui public-news">
+      <SEO
+        title="News & Updates"
         description="Latest match reports, club announcements, and squad news from Junda United FC."
       />
-      
-      {/* 🎯 Club Logo Background Watermark */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.8, x: '-50%', y: '-50%' }}
-        animate={{ opacity: 0.15, scale: 1, x: '-50%', y: '-50%' }}
-        transition={{ duration: 1.5, ease: "easeOut" }}
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          width: '85vw',
-          maxWidth: '800px',
-          height: '85vh',
-          backgroundImage: 'url("/junda-logo.webp")',
-          backgroundSize: 'contain',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          zIndex: 0,
-          pointerEvents: 'none'
-        }}
-      />
+      <ClubWatermark />
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '1000px', margin: '0 auto' }}>
-        
-        {/* HERO HEADER */}
-        <div style={{ textAlign: 'center', marginBottom: '3.5rem', ...glassStyle, padding: '2.5rem 1rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.3)' }}>
-          <h1 style={{ fontSize: '2.5rem', margin: '0 0 0.5rem 0', fontWeight: '800', letterSpacing: '0.02em', color: '#fff' }}>LATEST CLUB NEWS</h1>
-          <p style={{ margin: '0', fontSize: '1.1rem', color: '#94a3b8', fontWeight: '500' }}>Stay up to date with fixtures, match reports, and announcements from Junda United FC.</p>
-        </div>
+      <main className="public-container public-news__container">
+        <header className="public-news__header public-glass">
+          <span className="public-news__eyebrow">Junda United FC</span>
+          <h1 className="public-news__heading">Latest Club News</h1>
+          <p className="public-news__intro">
+            Match reports, club announcements, and stories from around Junda United FC.
+          </p>
+        </header>
 
-        {/* NEWS GRID */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-          {news.map((item) => (
-            <Link to={`/news/${item._id}`} key={item._id} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-              <div style={{ ...glassStyle, borderRadius: '12px', overflow: 'hidden', height: '100%', display: 'flex', flexDirection: 'column', transition: 'transform 0.2s, box-shadow 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}
-                   onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.3)'; }}
-                   onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.2)'; }}
-              >
-                {item.imageUrl && (
-                  <div style={{ width: '100%', height: '200px', overflow: 'hidden', backgroundColor: 'rgba(15, 23, 42, 0.5)' }}>
-                    <img
-                      src={transformCloudinaryUrl(item.imageUrl, 'f_auto,q_auto,w_600,c_limit')}
-                      srcSet={getCloudinarySrcSet(item.imageUrl, [320, 480, 640]) || undefined}
-                      sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1100px) calc((100vw - 3rem) / 2), 320px"
-                      alt={item.title}
-                      loading="lazy"
-                      decoding="async"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </div>
-                )}
-                <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', flex: '1' }}>
-                  <span style={{ fontSize: '0.8rem', color: '#60a5fa', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.4rem', display: 'inline-block' }}>{item.date}</span>
-                  <h3 style={{ margin: '0 0 0.75rem 0', color: '#fff', fontSize: '1.25rem', lineHeight: '1.4' }}>{item.title}</h3>
-                  
-                  <p style={{ color: '#94a3b8', fontSize: '0.95rem', lineHeight: '1.5', flex: '1', marginBottom: '1.5rem' }}>
-                    {item.content.length > 120 ? `${item.content.substring(0, 120)}...` : item.content}
-                  </p>
-                  
-                  {/* Footer link and button */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '0.9rem' }}>
-                      Read Full Article →
-                    </span>
-                    
-                    <button 
-                      onClick={(e) => handleShare(e, item._id, item.title)}
-                      style={{
-                        backgroundColor: 'rgba(15, 23, 42, 0.6)',
-                        color: '#f8fafc',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        padding: '0.4rem 0.8rem',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold',
-                        fontSize: '0.85rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.3rem',
-                        transition: 'background 0.2s'
-                      }}
-                      onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.3)'}
-                      onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(15, 23, 42, 0.6)'}
-                    >
-                      🔗 Share
-                    </button>
-                  </div>
-
-                </div>
+        <section className="public-news__featured-section" aria-labelledby="featured-story-heading">
+          <div className="public-news__section-label">
+            <span>Featured story</span>
+          </div>
+          <article className="public-news__featured public-glass">
+            <Link
+              to={`/news/${featuredArticle._id}`}
+              className="public-news__featured-link"
+              aria-labelledby="featured-story-heading"
+            >
+              <ArticleImage
+                item={featuredArticle}
+                className="public-news__featured-media"
+                sizes="(max-width: 768px) calc(100vw - 2rem), 55vw"
+                widths={[480, 768, 1000]}
+                eager
+              />
+              <div className="public-news__featured-content">
+                <ArticleMeta item={featuredArticle} />
+                <h2 id="featured-story-heading" className="public-news__featured-title">
+                  {featuredArticle.title}
+                </h2>
+                <p className="public-news__featured-excerpt">
+                  {getExcerpt(featuredArticle.content, 220)}
+                </p>
+                <span className="public-news__read-more">Read story <span aria-hidden="true">→</span></span>
               </div>
             </Link>
-          ))}
-        </div>
+            <div className="public-news__featured-actions">
+              <button
+                type="button"
+                className="public-news__share"
+                onClick={() => handleShare(featuredArticle._id, featuredArticle.title)}
+              >
+                <span aria-hidden="true">🔗</span> Share story
+              </button>
+            </div>
+          </article>
+        </section>
 
-      </div>
+        {remainingArticles.length > 0 && (
+          <section className="public-news__articles-section" aria-labelledby="more-stories-heading">
+            <div className="public-news__section-heading-row">
+              <div>
+                <span className="public-news__eyebrow">From the club</span>
+                <h2 id="more-stories-heading" className="public-news__section-heading">
+                  More stories
+                </h2>
+              </div>
+            </div>
+
+            <div className="public-news__grid">
+              {remainingArticles.map(item => (
+                <article className="public-news__card public-glass" key={item._id}>
+                  <Link to={`/news/${item._id}`} className="public-news__card-link">
+                    <ArticleImage
+                      item={item}
+                      className="public-news__card-media"
+                      sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1024px) calc((100vw - 3rem) / 2), 360px"
+                      widths={[320, 480, 640]}
+                    />
+                    <div className="public-news__card-content">
+                      <ArticleMeta item={item} />
+                      <h3 className="public-news__card-title">{item.title}</h3>
+                      <p className="public-news__card-excerpt">
+                        {getExcerpt(item.content, 120)}
+                      </p>
+                      <span className="public-news__read-more">Read story <span aria-hidden="true">→</span></span>
+                    </div>
+                  </Link>
+                  <div className="public-news__card-actions">
+                    <button
+                      type="button"
+                      className="public-news__share"
+                      onClick={() => handleShare(item._id, item.title)}
+                    >
+                      <span aria-hidden="true">🔗</span> Share
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+      </main>
     </div>
+  );
+}
+
+function getFeaturedArticle(articles) {
+  return articles.reduce((latest, article) => {
+    const latestDate = Date.parse(latest.date);
+    const articleDate = Date.parse(article.date);
+
+    if (Number.isNaN(articleDate)) return latest;
+    if (Number.isNaN(latestDate) || articleDate > latestDate) return article;
+    return latest;
+  }, articles[0]);
+}
+
+function getExcerpt(content, limit) {
+  if (typeof content !== 'string') return '';
+  return content.length > limit ? `${content.substring(0, limit)}...` : content;
+}
+
+function ArticleMeta({ item }) {
+  return (
+    <div className="public-news__meta">
+      <span>{item.date || 'Junda United FC'}</span>
+    </div>
+  );
+}
+
+function ArticleImage({ item, className, sizes, widths, eager = false }) {
+  if (!item.imageUrl) {
+    return (
+      <div className={`${className} public-news__media-placeholder`} aria-hidden="true">
+        <span>Junda United FC</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={className}>
+      <img
+        src={transformCloudinaryUrl(item.imageUrl, `f_auto,q_auto,w_${widths[widths.length - 1]},c_limit`)}
+        srcSet={getCloudinarySrcSet(item.imageUrl, widths) || undefined}
+        sizes={sizes}
+        alt={item.title}
+        loading={eager ? 'eager' : 'lazy'}
+        decoding="async"
+      />
+    </div>
+  );
+}
+
+function ClubWatermark() {
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+  return (
+    <motion.div
+      className="public-news__watermark"
+      initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 0.1, scale: 1 }}
+      transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.8, ease: 'easeOut' }}
+      aria-hidden="true"
+    />
   );
 }
 
 function PageMessage({ message, onRetry }) {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: '#f8fafc', padding: '4rem 1rem', textAlign: 'center' }}>
-      <p>{message}</p>
-      {onRetry && <button type="button" onClick={onRetry}>Try again</button>}
+    <div className="public-ui public-news public-news__status-page">
+      <div className="public-container">
+        <div className="public-news__status public-glass">
+          <p>{message}</p>
+          {onRetry && (
+            <button type="button" className="public-news__retry" onClick={onRetry}>
+              Try again
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
