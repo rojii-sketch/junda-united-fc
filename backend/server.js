@@ -127,6 +127,49 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: '100kb' })); // Allows server to read bounded JSON bodies from React
 
+const isPlainObject = (value) => (
+  value !== null &&
+  typeof value === 'object' &&
+  !Array.isArray(value)
+);
+
+const hasOnlyAllowedFields = (body, allowedFields) => (
+  Object.keys(body).every((field) => allowedFields.includes(field))
+);
+
+const isNonEmptyString = (value) => (
+  typeof value === 'string' && value.trim().length > 0
+);
+
+const isOptionalString = (value) => (
+  value === undefined || typeof value === 'string'
+);
+
+const isFiniteNumber = (value) => (
+  typeof value === 'number' && Number.isFinite(value)
+);
+
+const isFiniteNumberOrNumericString = (value) => (
+  isFiniteNumber(value) ||
+  (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)))
+);
+
+const normalizedNumber = (value) => (
+  typeof value === 'string' ? Number(value) : value
+);
+
+const trimStringFields = (body, fields) => {
+  const normalized = { ...body };
+
+  for (const field of fields) {
+    if (typeof normalized[field] === 'string') {
+      normalized[field] = normalized[field].trim();
+    }
+  }
+
+  return normalized;
+};
+
 // 🛡️ THE MAGIC CACHE SHIELD
 app.use('/api', (req, res, next) => {
   if (req.method === 'GET') {
@@ -204,8 +247,17 @@ app.get('/api/ready', (req, res) => {
 // 🔐 SECURE ADMIN LOGIN ENDPOINT
 // ==========================================================
 app.post('/api/admin/login', loginRateLimit, async (req, res) => {
+  if (
+    !isPlainObject(req.body) ||
+    !isNonEmptyString(req.body.username) ||
+    !isNonEmptyString(req.body.password)
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
   try {
-    const { username, password } = req.body;
+    const username = req.body.username.trim();
+    const password = req.body.password;
 
     const admin = await Admin.findOne({ username });
     if (!admin) {
@@ -271,16 +323,49 @@ app.get('/api/news', async (req, res) => {
 });
 
 app.post('/api/news', requireAuth, mutationRateLimit, async (req, res) => {
-  try { res.status(201).json(await new News(req.body).save()); } 
+  const allowedFields = ['title', 'content', 'imageUrl', 'date'];
+
+  if (
+    !isPlainObject(req.body) ||
+    !hasOnlyAllowedFields(req.body, allowedFields) ||
+    !isNonEmptyString(req.body.title) ||
+    !isNonEmptyString(req.body.content) ||
+    !isOptionalString(req.body.imageUrl) ||
+    !isOptionalString(req.body.date)
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const article = trimStringFields(req.body, allowedFields);
+
+  try { res.status(201).json(await new News(article).save()); }
   catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 app.put('/api/news/:id', requireAuth, mutationRateLimit, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id) || !isPlainObject(req.body)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
   try {
     const allowedFields = ['title', 'content', 'imageUrl', 'date'];
-    const updates = Object.fromEntries(
+    if (!hasOnlyAllowedFields(req.body, allowedFields)) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    const updates = trimStringFields(Object.fromEntries(
       Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
-    );
+    ), allowedFields);
+
+    if (
+      Object.keys(updates).length === 0 ||
+      ('title' in updates && !isNonEmptyString(updates.title)) ||
+      ('content' in updates && !isNonEmptyString(updates.content)) ||
+      !isOptionalString(updates.imageUrl) ||
+      !isOptionalString(updates.date)
+    ) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
 
     const updatedNews = await News.findByIdAndUpdate(
       req.params.id,
@@ -326,11 +411,63 @@ app.get('/api/players', async (req, res) => {
 });
 
 app.post('/api/players', requireAuth, mutationRateLimit, async (req, res) => {
-  try { res.status(201).json(await new Player(req.body).save()); } 
+  const allowedFields = [
+    'name',
+    'position',
+    'jerseyNumber',
+    'role',
+    'image',
+    'age',
+    'squadCategory',
+    'appearances',
+    'goals',
+    'bio',
+    'contact'
+  ];
+
+  if (
+    !isPlainObject(req.body) ||
+    !hasOnlyAllowedFields(req.body, allowedFields) ||
+    !isNonEmptyString(req.body.name) ||
+    !isNonEmptyString(req.body.position) ||
+    !isOptionalString(req.body.jerseyNumber) ||
+    !isOptionalString(req.body.role) ||
+    !isOptionalString(req.body.image) ||
+    !isOptionalString(req.body.squadCategory) ||
+    !isOptionalString(req.body.bio) ||
+    !isOptionalString(req.body.contact) ||
+    (req.body.age !== undefined && req.body.age !== '' && !isFiniteNumberOrNumericString(req.body.age)) ||
+    (req.body.appearances !== undefined && !isFiniteNumberOrNumericString(req.body.appearances)) ||
+    (req.body.goals !== undefined && !isFiniteNumberOrNumericString(req.body.goals))
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const player = trimStringFields(req.body, ['name', 'position', 'jerseyNumber', 'role', 'image', 'squadCategory', 'bio', 'contact']);
+  if (player.age === '') delete player.age;
+  for (const field of ['age', 'appearances', 'goals']) {
+    if (player[field] !== undefined) player[field] = normalizedNumber(player[field]);
+  }
+
+  if (
+    (player.role !== undefined && !['player', 'coach'].includes(player.role)) ||
+    (player.squadCategory !== undefined && !['First Team', 'Under 17', 'Under 13'].includes(player.squadCategory)) ||
+    (player.age !== undefined && player.age < 0) ||
+    (player.appearances !== undefined && player.appearances < 0) ||
+    (player.goals !== undefined && player.goals < 0)
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try { res.status(201).json(await new Player(player).save()); }
   catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 app.put('/api/players/:id', requireAuth, mutationRateLimit, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id) || !isPlainObject(req.body)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
   try {
     const allowedFields = [
       'name',
@@ -346,9 +483,40 @@ app.put('/api/players/:id', requireAuth, mutationRateLimit, async (req, res) => 
       'contact'
     ];
 
-    const updates = Object.fromEntries(
+    if (!hasOnlyAllowedFields(req.body, allowedFields)) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    const updates = trimStringFields(Object.fromEntries(
       Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
-    );
+    ), ['name', 'position', 'jerseyNumber', 'role', 'image', 'squadCategory', 'bio', 'contact']);
+
+    if (
+      Object.keys(updates).length === 0 ||
+      ('name' in updates && !isNonEmptyString(updates.name)) ||
+      ('position' in updates && !isNonEmptyString(updates.position)) ||
+      ('jerseyNumber' in updates && !isOptionalString(updates.jerseyNumber)) ||
+      ('role' in updates && !isOptionalString(updates.role)) ||
+      ('image' in updates && !isOptionalString(updates.image)) ||
+      ('squadCategory' in updates && !isOptionalString(updates.squadCategory)) ||
+      ('bio' in updates && !isOptionalString(updates.bio)) ||
+      ('contact' in updates && !isOptionalString(updates.contact)) ||
+      ('age' in updates && updates.age !== '' && !isFiniteNumberOrNumericString(updates.age)) ||
+      ('appearances' in updates && !isFiniteNumberOrNumericString(updates.appearances)) ||
+      ('goals' in updates && !isFiniteNumberOrNumericString(updates.goals)) ||
+      ('role' in updates && !['player', 'coach'].includes(updates.role)) ||
+      ('squadCategory' in updates && !['First Team', 'Under 17', 'Under 13'].includes(updates.squadCategory)) ||
+      ('age' in updates && isFiniteNumberOrNumericString(updates.age) && Number(updates.age) < 0) ||
+      ('appearances' in updates && isFiniteNumberOrNumericString(updates.appearances) && Number(updates.appearances) < 0) ||
+      ('goals' in updates && isFiniteNumberOrNumericString(updates.goals) && Number(updates.goals) < 0)
+    ) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    for (const field of ['age', 'appearances', 'goals']) {
+      if (updates[field] === '') delete updates[field];
+      if (updates[field] !== undefined) updates[field] = normalizedNumber(updates[field]);
+    }
 
     const updatedPlayer = await Player.findByIdAndUpdate(
       req.params.id,
@@ -367,8 +535,21 @@ app.put('/api/players/:id', requireAuth, mutationRateLimit, async (req, res) => 
 });
 
 app.delete('/api/players/:id', requireAuth, mutationRateLimit, async (req, res) => {
-  try { await Player.findByIdAndDelete(req.params.id); res.json({ message: 'Player removed' }); } 
-  catch { res.status(500).json({ error: 'Internal server error' }); }
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try {
+    const deletedPlayer = await Player.findByIdAndDelete(req.params.id);
+
+    if (!deletedPlayer) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+
+    return res.json({ message: 'Player removed' });
+  } catch {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
@@ -380,13 +561,43 @@ app.get('/api/gallery', async (req, res) => {
 });
 
 app.post('/api/gallery', requireAuth, mutationRateLimit, async (req, res) => {
-  try { res.status(201).json(await new Gallery(req.body).save()); } 
+  const allowedFields = ['type', 'url', 'caption'];
+
+  if (
+    !isPlainObject(req.body) ||
+    !hasOnlyAllowedFields(req.body, allowedFields) ||
+    !isNonEmptyString(req.body.url) ||
+    !isOptionalString(req.body.type) ||
+    !isOptionalString(req.body.caption)
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const media = trimStringFields(req.body, allowedFields);
+  if (media.type !== undefined && !['image', 'video'].includes(media.type)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try { res.status(201).json(await new Gallery(media).save()); }
   catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
 app.delete('/api/gallery/:id', requireAuth, mutationRateLimit, async (req, res) => {
-  try { await Gallery.findByIdAndDelete(req.params.id); res.json({ message: 'Asset removed' }); } 
-  catch { res.status(500).json({ error: 'Internal server error' }); }
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try {
+    const deletedGalleryItem = await Gallery.findByIdAndDelete(req.params.id);
+
+    if (!deletedGalleryItem) {
+      return res.status(404).json({ error: 'Asset not found' });
+    }
+
+    return res.json({ message: 'Asset removed' });
+  } catch {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
@@ -399,7 +610,37 @@ app.get('/api/fixtures', async (req, res) => {
 });
 
 app.post('/api/fixtures', requireAuth, mutationRateLimit, async (req, res) => {
-  try { res.status(201).json(await new Fixture(req.body).save()); } 
+  const allowedFields = [
+    'opponent',
+    'opponentLogo',
+    'matchDate',
+    'kickoffTime',
+    'venue',
+    'status',
+    'jundaScore',
+    'opponentScore',
+    'isHomeMatch'
+  ];
+
+  if (
+    !isPlainObject(req.body) ||
+    !hasOnlyAllowedFields(req.body, allowedFields) ||
+    !isNonEmptyString(req.body.opponent) ||
+    !isNonEmptyString(req.body.matchDate) ||
+    !isNonEmptyString(req.body.kickoffTime) ||
+    !isOptionalString(req.body.opponentLogo) ||
+    !isOptionalString(req.body.venue) ||
+    (req.body.status !== undefined && !['Upcoming', 'Completed'].includes(req.body.status)) ||
+    (req.body.jundaScore !== undefined && (!isFiniteNumber(req.body.jundaScore) || req.body.jundaScore < 0)) ||
+    (req.body.opponentScore !== undefined && (!isFiniteNumber(req.body.opponentScore) || req.body.opponentScore < 0)) ||
+    (req.body.isHomeMatch !== undefined && typeof req.body.isHomeMatch !== 'boolean')
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const fixture = trimStringFields(req.body, ['opponent', 'opponentLogo', 'matchDate', 'kickoffTime', 'venue']);
+
+  try { res.status(201).json(await new Fixture(fixture).save()); }
   catch { res.status(400).json({ error: 'Invalid request' }); }
 });
 
@@ -431,26 +672,61 @@ app.get('/api/standings', async (req, res) => {
 });
 
 app.post('/api/standings', requireAuth, mutationRateLimit, async (req, res) => {
+  const allowedFields = ['name', 'rank', 'p', 'w', 'd', 'l', 'gf', 'ga', 'pts', 'form'];
+
+  if (
+    !isPlainObject(req.body) ||
+    !hasOnlyAllowedFields(req.body, allowedFields) ||
+    !isNonEmptyString(req.body.name) ||
+    !isFiniteNumber(req.body.rank) ||
+    req.body.rank < 1 ||
+    ['p', 'w', 'd', 'l', 'gf', 'ga', 'pts'].some((field) => (
+      req.body[field] !== undefined &&
+      (!isFiniteNumber(req.body[field]) || req.body[field] < 0)
+    )) ||
+    (req.body.form !== undefined && (
+      !Array.isArray(req.body.form) ||
+      req.body.form.some((result) => !['W', 'D', 'L'].includes(result))
+    ))
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const standing = trimStringFields(req.body, ['name']);
+
   try {
-    const escapedName = req.body.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escapedName = standing.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const query = { name: { $regex: `^${escapedName}$`, $options: 'i' } };
-    const update = { ...req.body };
+    const update = { ...standing };
     delete update.name;
     const options = { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true };
     const savedStanding = await Standing.findOneAndUpdate(
       query,
-      { $set: update, $setOnInsert: { name: req.body.name } },
+      { $set: update, $setOnInsert: { name: standing.name } },
       options
     );
-    res.status(201).json(savedStanding);
+    return res.status(201).json(savedStanding);
   } catch {
     res.status(400).json({ error: 'Invalid request' });
   }
 });
 
 app.delete('/api/standings/:id', requireAuth, mutationRateLimit, async (req, res) => {
-  try { await Standing.findByIdAndDelete(req.params.id); res.json({ message: 'Team removed' }); } 
-  catch { res.status(500).json({ error: 'Internal server error' }); }
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try {
+    const deletedStanding = await Standing.findByIdAndDelete(req.params.id);
+
+    if (!deletedStanding) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    return res.json({ message: 'Team removed' });
+  } catch {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
