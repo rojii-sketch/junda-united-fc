@@ -65,47 +65,72 @@ function AdminRoute() {
     fixtures: [],
     standings: []
   });
-  const [status, setStatus] = useState('loading');
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => Boolean(sessionStorage.getItem('junda_jwt'))
+  );
+  const [collectionStatuses, setCollectionStatuses] = useState({
+    news: 'idle',
+    players: 'idle',
+    gallery: 'idle',
+    fixtures: 'idle',
+    standings: 'idle'
+  });
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    const controller = new AbortController();
-
-    Promise.all([
-      fetchJson('/news', controller.signal),
-      fetchJson('/players', controller.signal),
-      fetchJson('/gallery', controller.signal),
-      fetchJson('/fixtures', controller.signal),
-      fetchJson('/standings', controller.signal)
-    ])
-      .then(([news, players, gallery, fixtures, standings]) => {
-        setData({ news, players, gallery, fixtures, standings });
-        setStatus('success');
-      })
-      .catch((requestError) => {
-        if (requestError.name === 'AbortError') return;
-        console.error('Error retrieving admin records:', requestError);
-        setStatus('error');
+    if (!isAuthenticated) {
+      setData({
+        news: [],
+        players: [],
+        gallery: [],
+        fixtures: [],
+        standings: []
       });
+      setCollectionStatuses({
+        news: 'idle',
+        players: 'idle',
+        gallery: 'idle',
+        fixtures: 'idle',
+        standings: 'idle'
+      });
+      return undefined;
+    }
 
-    return () => controller.abort();
-  }, [retryCount]);
+    const controller = new AbortController();
+    setCollectionStatuses({
+      news: 'loading',
+      players: 'loading',
+      gallery: 'loading',
+      fixtures: 'loading',
+      standings: 'loading'
+    });
 
-  if (status === 'loading') {
-    return <RouteMessage message="Loading admin records..." />;
-  }
+    let isCurrentRequest = true;
+    const loadCollection = (collectionName, path) => {
+      fetchJson(path, controller.signal)
+        .then(collectionData => {
+          if (!isCurrentRequest || controller.signal.aborted) return;
+          setData(current => ({ ...current, [collectionName]: collectionData }));
+          setCollectionStatuses(current => ({ ...current, [collectionName]: 'success' }));
+        })
+        .catch(requestError => {
+          if (!isCurrentRequest || requestError.name === 'AbortError') return;
+          console.error(`Error retrieving admin ${collectionName}:`, requestError);
+          setCollectionStatuses(current => ({ ...current, [collectionName]: 'error' }));
+        });
+    };
 
-  if (status === 'error') {
-    return (
-      <RouteMessage
-        message="Unable to load admin records."
-        action={() => {
-          setStatus('loading');
-          setRetryCount(count => count + 1);
-        }}
-      />
-    );
-  }
+    loadCollection('news', '/news');
+    loadCollection('players', '/players');
+    loadCollection('gallery', '/gallery');
+    loadCollection('fixtures', '/fixtures');
+    loadCollection('standings', '/standings');
+
+    return () => {
+      isCurrentRequest = false;
+      controller.abort();
+    };
+  }, [isAuthenticated, retryCount]);
 
   return (
     <Admin
@@ -120,19 +145,12 @@ function AdminRoute() {
       standings={data.standings}
       setStandings={value => setData(current => ({ ...current, standings: typeof value === 'function' ? value(current.standings) : value }))}
       API_BASE={API_BASE}
+      collectionStatuses={collectionStatuses}
+      onRetryData={() => setRetryCount(count => count + 1)}
+      onAuthChange={authenticated => {
+        setIsAuthenticated(authenticated);
+        if (authenticated) setRetryCount(count => count + 1);
+      }}
     />
-  );
-}
-
-function RouteMessage({ message, action }) {
-  return (
-    <div className="page-container" style={{ textAlign: 'center', marginTop: '5rem' }}>
-      <p>{message}</p>
-      {action && (
-        <button type="button" className="submit-btn" onClick={action}>
-          Try again
-        </button>
-      )}
-    </div>
   );
 }

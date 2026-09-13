@@ -7,7 +7,10 @@ export default function Admin({
   gallery, setGallery, 
   fixtures, setFixtures,
   standings, setStandings,
-  API_BASE 
+  API_BASE,
+  collectionStatuses,
+  onRetryData,
+  onAuthChange
 }) {
   const [activeTab, setActiveTab] = useState('news');
   
@@ -73,6 +76,7 @@ export default function Admin({
         setAdminToken(data.token);
         sessionStorage.setItem('junda_jwt', data.token);
         setIsAuthenticated(true);
+        onAuthChange?.(true);
         // alert('🔒 Session Authenticated Successfully!'); // (Optional: can remove this alert now that UI feels responsive)
       } else {
         alert(data.message || 'Access Denied. Incorrect username or password.');
@@ -91,6 +95,7 @@ export default function Admin({
     sessionStorage.removeItem('junda_jwt');
     setAdminToken(null);
     setIsAuthenticated(false);
+    onAuthChange?.(false);
   };
 
   const handleFileUpload = async (e, formType) => {
@@ -428,6 +433,12 @@ export default function Admin({
   const listContainerStyle = { width: '100%', boxSizing: 'border-box', maxHeight: '450px', overflowY: 'auto', overflowX: 'hidden', background: '#f1f5f9', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' };
   const listHeaderStyle = { position: 'sticky', top: '-1.25rem', background: '#f1f5f9', paddingTop: '1rem', paddingBottom: '0.75rem', marginTop: 0, marginBottom: '1rem', borderBottom: '2px solid #e2e8f0', zIndex: 10 };
   const listRowStyle = { display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '1rem', borderRadius: '8px', marginBottom: '0.75rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' };
+  const loadingCollections = Object.entries(collectionStatuses || {})
+    .filter(([, status]) => status === 'loading')
+    .map(([collection]) => collection);
+  const failedCollections = Object.entries(collectionStatuses || {})
+    .filter(([, status]) => status === 'error')
+    .map(([collection]) => collection);
 
   return (
     <div className="page-container">
@@ -452,6 +463,24 @@ export default function Admin({
       {isUploading && (
         <div style={{ background: '#ebf8ff', color: '#2b6cb0', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold', textAlign: 'center' }}>
           ⏳ Processing file upload to Cloudinary storage stream...
+        </div>
+      )}
+
+      {(loadingCollections.length > 0 || failedCollections.length > 0) && (
+        <div style={{ background: failedCollections.length > 0 ? '#fff5f5' : '#ebf8ff', color: failedCollections.length > 0 ? '#c53030' : '#2b6cb0', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold', textAlign: 'center' }}>
+          {loadingCollections.length > 0 && (
+            <div>⏳ Loading: {loadingCollections.join(', ')}...</div>
+          )}
+          {failedCollections.length > 0 && (
+            <>
+              <div>Unable to load: {failedCollections.join(', ')}.</div>
+              {onRetryData && (
+                <button type="button" className="submit-btn" onClick={onRetryData} style={{ marginTop: '0.75rem' }}>
+                  Try again
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 
