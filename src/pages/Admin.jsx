@@ -1,10 +1,12 @@
 // src/pages/Admin.jsx
 import { useState, useEffect } from 'react';
+import AdminLayout from '../components/layout/AdminLayout';
+import '../Admin.css';
 
-export default function Admin({ 
-  news, setNews, 
-  players, setPlayers, 
-  gallery, setGallery, 
+export default function Admin({
+  news, setNews,
+  players, setPlayers,
+  gallery, setGallery,
   fixtures, setFixtures,
   standings, setStandings,
   API_BASE,
@@ -13,22 +15,25 @@ export default function Admin({
   onAuthChange
 }) {
   const [activeTab, setActiveTab] = useState('news');
-  
+
+  // Sidebar state management - moved here to be before conditional return
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // 🎯 JWT Authentication State
   const [adminToken, setAdminToken] = useState(sessionStorage.getItem('junda_jwt') || null);
   const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem('junda_jwt'));
-  
+
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // 🎯 NEW: Loading state for login verification
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const [newsForm, setNewsForm] = useState({ title: '', content: '', imageUrl: '', date: '' });
-  const [playerForm, setPlayerForm] = useState({ 
+  const [playerForm, setPlayerForm] = useState({
     name: '', position: '', jerseyNumber: '', role: 'player', image: '',
-    age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' 
+    age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: ''
   });
   const [galleryForm, setGalleryForm] = useState({ type: 'image', url: '', caption: '' });
   const [fixtureForm, setFixtureForm] = useState({
@@ -59,10 +64,10 @@ export default function Admin({
     if (e) e.preventDefault();
     if (isLoggingIn) return;
     if (!usernameInput || !passwordInput) return alert('Both username and password are required!');
-    
+
     // 🎯 Trigger the loading animation
     setIsLoggingIn(true);
-    
+
     try {
       const response = await fetch(`${API_BASE}/admin/login`, {
         method: 'POST',
@@ -137,7 +142,7 @@ export default function Admin({
     if (!newsForm.title || !newsForm.content) return alert('Title and Content are required!');
 
     setIsSubmittingNews(true);
-    
+
     try {
       if (editingNewsId) {
         const updatePayload = { title: newsForm.title, content: newsForm.content, imageUrl: newsForm.imageUrl, date: newsForm.date };
@@ -191,7 +196,7 @@ export default function Admin({
     if (!playerForm.name || !playerForm.position) return alert('Name and Position are required!');
 
     setIsSubmittingPlayer(true);
-    
+
     try {
       if (editingPlayerId) {
         const response = await fetch(`${API_BASE}/players/${editingPlayerId}`, {
@@ -315,7 +320,7 @@ export default function Admin({
       if (!res.ok) {
         const errorData = await res.json();
         alert(`❌ DATABASE REJECTED IT:\n\n${errorData.error || errorData.message}`);
-        return; 
+        return;
       }
       const savedTeam = await res.json();
       const matchesTeamName = (team) => team.name.toLowerCase() === savedTeam.name.toLowerCase();
@@ -355,7 +360,7 @@ export default function Admin({
         if (type === 'players') { setPlayers(players.filter(item => item._id !== id)); if (editingPlayerId === id) setEditingPlayerId(null); }
         if (type === 'gallery') setGallery(gallery.filter(item => item._id !== id));
         if (type === 'fixtures') setFixtures(fixtures.filter(item => item._id !== id));
-        if (type === 'standings') setStandings(standings.filter(item => item._id !== id)); 
+        if (type === 'standings') setStandings(standings.filter(item => item._id !== id));
         alert('Item dropped successfully from database records.');
       } else {
         alert('Failed to delete: Session may have expired. Please log in again.');
@@ -387,14 +392,14 @@ export default function Admin({
               </button>
             </div>
           </div>
-          <button 
-            type="submit" 
-            className="submit-btn" 
+          <button
+            type="submit"
+            className="submit-btn"
             disabled={isLoggingIn}
-            style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              alignItems: 'center', 
+            style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
               gap: '0.5rem',
               opacity: isLoggingIn ? 0.7 : 1,
               cursor: isLoggingIn ? 'not-allowed' : 'pointer'
@@ -429,10 +434,22 @@ export default function Admin({
     );
   }
 
+  // Determine section title and description based on activeTab
+  const sectionConfigs = {
+    news: { title: 'Manage News', description: 'Create, update and remove club articles in real-time.' },
+    fixtures: { title: 'Manage Fixtures', description: 'Log and track match schedules and results.' },
+    standings: { title: 'Manage Standings', description: 'Update league table positions and team statistics.' },
+    squad: { title: 'Manage Squad', description: 'Handle player registrations, staff records and team roster.' },
+    gallery: { title: 'Manage Gallery', description: 'Upload and organize media assets for club communications.' }
+  };
+
+  const { title: sectionTitle, description: sectionDescription } = sectionConfigs[activeTab] || { title: 'Admin Dashboard', description: 'Club management dashboard' };
+
   const panelStyle = { display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' };
   const listContainerStyle = { width: '100%', boxSizing: 'border-box', maxHeight: '450px', overflowY: 'auto', overflowX: 'hidden', background: '#f1f5f9', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' };
   const listHeaderStyle = { position: 'sticky', top: '-1.25rem', background: '#f1f5f9', paddingTop: '1rem', paddingBottom: '0.75rem', marginTop: 0, marginBottom: '1rem', borderBottom: '2px solid #e2e8f0', zIndex: 10 };
   const listRowStyle = { display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '1rem', borderRadius: '8px', marginBottom: '0.75rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)' };
+
   const loadingCollections = Object.entries(collectionStatuses || {})
     .filter(([, status]) => status === 'loading')
     .map(([collection]) => collection);
@@ -441,281 +458,291 @@ export default function Admin({
     .map(([collection]) => collection);
 
   return (
-    <div className="page-container">
-      <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h2>Admin Management Dashboard</h2>
-          <p>Create, update and remove club assets in real-time.</p>
+    <AdminLayout
+      sectionTitle={sectionTitle}
+      sectionDescription={sectionDescription}
+      showLogout={true}
+      onLogout={handleLogout}
+      onSidebarToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      isSidebarOpen={isSidebarOpen}
+      setIsSidebarOpen={setIsSidebarOpen}
+    >
+      <div className="page-container">
+        <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h2>Admin Management Dashboard</h2>
+            <p>Create, update and remove club assets in real-time.</p>
+          </div>
+          <button onClick={handleLogout} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+            Log Out
+          </button>
+        </header>
+
+        <div className="admin-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <button className={activeTab === 'news' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('news')}>Manage News</button>
+          <button className={activeTab === 'fixtures' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('fixtures')}>Manage Fixtures</button>
+          <button className={activeTab === 'standings' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('standings')}>Manage Standings</button>
+          <button className={activeTab === 'squad' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('squad')}>Manage Squad</button>
+          <button className={activeTab === 'gallery' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('gallery')}>Manage Gallery</button>
         </div>
-        <button onClick={handleLogout} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-          Log Out
-        </button>
-      </header>
 
-      <div className="admin-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <button className={activeTab === 'news' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('news')}>Manage News</button>
-        <button className={activeTab === 'fixtures' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('fixtures')}>Manage Fixtures</button>
-        <button className={activeTab === 'standings' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('standings')}>Manage Standings</button>
-        <button className={activeTab === 'squad' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('squad')}>Manage Squad</button>
-        <button className={activeTab === 'gallery' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('gallery')}>Manage Gallery</button>
-      </div>
+        {isUploading && (
+          <div style={{ background: '#ebf8ff', color: '#2b6cb0', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold', textAlign: 'center' }}>
+            ⏳ Processing file upload to Cloudinary storage stream...
+          </div>
+        )}
 
-      {isUploading && (
-        <div style={{ background: '#ebf8ff', color: '#2b6cb0', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold', textAlign: 'center' }}>
-          ⏳ Processing file upload to Cloudinary storage stream...
-        </div>
-      )}
+        {(loadingCollections.length > 0 || failedCollections.length > 0) && (
+          <div style={{ background: failedCollections.length > 0 ? '#fff5f5' : '#ebf8ff', color: failedCollections.length > 0 ? '#c53030' : '#2b6cb0', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold', textAlign: 'center' }}>
+            {loadingCollections.length > 0 && (
+              <div>⏳ Loading: {loadingCollections.join(', ')}...</div>
+            )}
+            {failedCollections.length > 0 && (
+              <>
+                <div>Unable to load: {failedCollections.join(', ')}.</div>
+                {onRetryData && (
+                  <button type="button" className="submit-btn" onClick={onRetryData} style={{ marginTop: '0.75rem' }}>
+                    Try again
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
-      {(loadingCollections.length > 0 || failedCollections.length > 0) && (
-        <div style={{ background: failedCollections.length > 0 ? '#fff5f5' : '#ebf8ff', color: failedCollections.length > 0 ? '#c53030' : '#2b6cb0', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontWeight: 'bold', textAlign: 'center' }}>
-          {loadingCollections.length > 0 && (
-            <div>⏳ Loading: {loadingCollections.join(', ')}...</div>
-          )}
-          {failedCollections.length > 0 && (
-            <>
-              <div>Unable to load: {failedCollections.join(', ')}.</div>
-              {onRetryData && (
-                <button type="button" className="submit-btn" onClick={onRetryData} style={{ marginTop: '0.75rem' }}>
-                  Try again
+        {/* --- NEWS SECTION --- */}
+        {activeTab === 'news' && (
+          <div className="admin-panel" style={panelStyle}>
+            <form onSubmit={handleAddNews} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
+              <h3>{editingNewsId ? "📝 Edit Article" : "Post New Article"}</h3>
+              <div className="form-group"><label>Article Title</label><input type="text" placeholder="e.g. Match Victory!" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} /></div>
+              <div className="form-group"><label>Cover Image</label><input type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'news')} /></div>
+              <div className="form-group"><label>Publish Date (Optional)</label><input type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} /></div>
+              <div className="form-group"><label>Article Content</label><textarea placeholder="Write article text here..." rows="4" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea></div>
+              <button type="submit" className="submit-btn" disabled={isSubmittingNews}>{editingNewsId ? "Save Changes" : "Publish Post"}</button>
+              {editingNewsId && (
+                <button type="button" onClick={() => { setEditingNewsId(null); setNewsForm({ title: '', content: '', imageUrl: '', date: '' }); }} style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>Cancel Edit</button>
+              )}
+            </form>
+
+            <div style={listContainerStyle}>
+              <h3 style={listHeaderStyle}>Current Articles ({news.length})</h3>
+              {news.map(item => (
+                <div key={item._id} style={listRowStyle}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.title}</strong>
+                    <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.date}</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditNews(item)}>Edit</button>
+                    <button type="button" className="delete-btn" disabled={deletingItemKey === `news:${item._id}`} onClick={() => deleteItem(item._id, 'news')}>Delete</button>
+                  </div>
+                </div>
+                ))}
+              {news.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No articles published yet.</div>}
+            </div>
+          </div>
+        )}
+
+        {/* --- FIXTURES SECTION --- */}
+        {activeTab === 'fixtures' && (
+          <div className="admin-panel" style={panelStyle}>
+            <form onSubmit={handleAddFixture} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
+              <h3>Log New Match Fixture</h3>
+              <div className="form-group"><label>Opponent Team Name</label><input type="text" placeholder="e.g. Black Dragon FC" value={fixtureForm.opponent} onChange={e => setFixtureForm({...fixtureForm, opponent: e.target.value})} /></div>
+              <div className="form-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                <div style={{ flex: '1 1 150px' }}><label>Match Date</label><input type="text" placeholder="e.g. 18/07/2026" value={fixtureForm.matchDate} onChange={e => setFixtureForm({...fixtureForm, matchDate: e.target.value})} /></div>
+                <div style={{ flex: '1 1 150px' }}><label>Kickoff Time</label><input type="text" value={fixtureForm.kickoffTime} onChange={e => setFixtureForm({...fixtureForm, kickoffTime: e.target.value})} /></div>
+              </div>
+              <div className="form-group"><label>Stadium Venue</label><input type="text" value={fixtureForm.venue} onChange={e => setFixtureForm({...fixtureForm, venue: e.target.value})} /></div>
+              <div className="form-group" style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px' }}><label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}><input type="checkbox" checked={fixtureForm.isHomeMatch} onChange={e => setFixtureForm({...fixtureForm, isHomeMatch: e.target.checked})} />🏠 Home Match</label></div>
+              <div className="form-group"><label>Match Progress Status</label><select value={fixtureForm.status} onChange={e => setFixtureForm({...fixtureForm, status: e.target.value})}><option value="Upcoming">🗓️ Upcoming Match</option><option value="Completed">🏆 Completed</option></select></div>
+              {fixtureForm.status === 'Completed' && (
+                <div className="form-group" style={{ display: 'flex', gap: '1rem', background: '#f0fdf4', padding: '1rem', borderRadius: '8px' }}>
+                  <div><label>Junda Score</label><input type="number" min="0" value={fixtureForm.jundaScore} onChange={e => setFixtureForm({...fixtureForm, jundaScore: e.target.value})} style={{ width: '70px' }} /></div>
+                  <div style={{ fontWeight: 'bold', alignSelf: 'center', marginTop: '1rem' }}>VS</div>
+                  <div><label>Opponent Score</label><input type="number" min="0" value={fixtureForm.opponentScore} onChange={e => setFixtureForm({...fixtureForm, opponentScore: e.target.value})} style={{ width: '70px' }} /></div>
+                </div>
+              )}
+              <button type="submit" className="submit-btn" disabled={isSubmittingFixture}>Save Match Entry</button>
+            </form>
+
+            <div style={listContainerStyle}>
+              <h3 style={listHeaderStyle}>Active Match Logs ({fixtures?.length || 0})</h3>
+              {(fixtures || []).map(item => (
+                <div key={item._id} style={listRowStyle}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Junda United vs {item.opponent}</strong>
+                    <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.matchDate} • {item.status === 'Completed' ? `Score: ${item.jundaScore}-${item.opponentScore}` : 'Upcoming'}</p>
+                  </div>
+                  <button type="button" className="delete-btn" disabled={deletingItemKey === `fixtures:${item._id}`} onClick={() => deleteItem(item._id, 'fixtures')}>Delete</button>
+                </div>
+              ))}
+              {(!fixtures || fixtures.length === 0) && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No fixtures logged yet.</div>}
+            </div>
+          </div>
+        )}
+
+        {/* --- STANDINGS SECTION --- */}
+        {activeTab === 'standings' && (
+          <div className="admin-panel" style={panelStyle}>
+            <form onSubmit={handleStandingSubmit} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
+              <h3>📊 Update League Standings Table</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                <div className="form-group" style={{ flex: '1 1 100px' }}><label>Pos (Rank)</label><input type="number" min="1" value={standingForm.rank} onChange={e => setStandingForm({...standingForm, rank: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '2 1 200px' }}><label>Club Name</label><input type="text" placeholder="e.g. Junda United FC" value={standingForm.name} onChange={e => setStandingForm({...standingForm, name: e.target.value})} required /></div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '0.5rem' }}>
+                <div className="form-group"><label>P</label><input type="number" value={standingForm.p} onChange={e => setStandingForm({...standingForm, p: e.target.value})} /></div>
+                <div className="form-group"><label>W</label><input type="number" value={standingForm.w} onChange={e => setStandingForm({...standingForm, w: e.target.value})} /></div>
+                <div className="form-group"><label>D</label><input type="number" value={standingForm.d} onChange={e => setStandingForm({...standingForm, d: e.target.value})} /></div>
+                <div className="form-group"><label>L</label><input type="number" value={standingForm.l} onChange={e => setStandingForm({...standingForm, l: e.target.value})} /></div>
+                <div className="form-group"><label>GF</label><input type="number" value={standingForm.gf} onChange={e => setStandingForm({...standingForm, gf: e.target.value})} /></div>
+                <div className="form-group"><label>GA</label><input type="number" value={standingForm.ga} onChange={e => setStandingForm({...standingForm, ga: e.target.value})} /></div>
+                <div className="form-group"><label>Pts</label><input type="number" value={standingForm.pts} onChange={e => setStandingForm({...standingForm, pts: e.target.value})} style={{ fontWeight: 'bold' }} /></div>
+              </div>
+
+              <div className="form-group"><label>Form History (Comma separated)</label><input type="text" placeholder="W,W,D,L,W" value={standingForm.formInput} onChange={e => setStandingForm({...standingForm, formInput: e.target.value})} /></div>
+              <button
+                type="submit"
+                className="submit-btn"
+                style={{ background: '#10b981', color: '#fff', width: '100%', padding: '0.85rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', transition: 'all 0.2s ease', marginTop: '1rem' }}
+                onMouseOver={(e) => { e.target.style.background = '#059669'; e.target.style.transform = 'translateY(-2px)'; }}
+                onMouseOut={(e) => { e.target.style.background = '#10b981'; e.target.style.transform = 'translateY(0)'; }}
+                onMouseDown={(e) => { e.target.style.transform = 'scale(0.98)'; }}
+                onMouseUp={(e) => { e.target.style.transform = 'translateY(-2px)'; }}
+                disabled={isSubmittingStanding}
+              >
+                💾 Save Team Metrics
+              </button>
+            </form>
+
+            <div style={listContainerStyle}>
+              <h3 style={listHeaderStyle}>Active League Table Rows ({standings?.length || 0})</h3>
+              {(standings || []).map(team => (
+                <div key={team._id} style={listRowStyle}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.rank}. {team.name}</strong>
+                    <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span> • Record: P {team.p} W {team.w} D {team.d} L {team.l}</p>
+                  </div>
+                  <button type="button" className="delete-btn" disabled={deletingItemKey === `standings:${team._id}`} onClick={() => deleteItem(team._id, 'standings')}>Wipe</button>
+                </div>
+              ))}
+              {(!standings || standings.length === 0) && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No teams logged yet.</div>}
+            </div>
+          </div>
+        )}
+
+        {/* --- SQUAD SECTION --- */}
+        {activeTab === 'squad' && (
+          <div className="admin-panel" style={panelStyle}>
+            <form onSubmit={handleAddPlayer} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
+              <h3>{editingPlayerId ? "📝 Edit Roster Member" : "Add Roster Member"}</h3>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                <div className="form-group" style={{ flex: '2 1 200px' }}><label>Full Name</label><input type="text" placeholder="e.g. Marcus Vance" value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '1 1 150px' }}><label>Position</label><input type="text" placeholder="e.g. Striker" value={playerForm.position} onChange={e => setPlayerForm({...playerForm, position: e.target.value})} /></div>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                <div className="form-group" style={{ flex: '1 1 100px' }}><label>Jersey #</label><input type="text" placeholder="e.g. 10" value={playerForm.jerseyNumber} onChange={e => setPlayerForm({...playerForm, jerseyNumber: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '1 1 100px' }}><label>Age</label><input type="number" placeholder="e.g. 21" value={playerForm.age} onChange={e => setPlayerForm({...playerForm, age: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '1 1 100px' }}><label>Apps</label><input type="number" value={playerForm.appearances} onChange={e => setPlayerForm({...playerForm, appearances: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '1 1 100px' }}><label>Goals</label><input type="number" value={playerForm.goals} onChange={e => setPlayerForm({...playerForm, goals: e.target.value})} /></div>
+              </div>
+
+              <div className="form-group"><label>Short Bio</label><textarea rows="2" placeholder="Brief player history..." value={playerForm.bio} onChange={e => setPlayerForm({...playerForm, bio: e.target.value})}></textarea></div>
+              <div className="form-group"><label>Contact Info (Email/Phone for Staff)</label><input type="text" placeholder="e.g. coach@jundaunited.com or +254..." value={playerForm.contact} onChange={e => setPlayerForm({...playerForm, contact: e.target.value})} /></div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                <div className="form-group" style={{ flex: '1 1 150px' }}><label>Squad Category</label>
+                  <select value={playerForm.squadCategory} onChange={e => setPlayerForm({...playerForm, squadCategory: e.target.value})}>
+                    <option value="First Team">First Team</option>
+                    <option value="Under 17">Under 17 (U-17)</option>
+                    <option value="Under 13">Under 13 (U-13)</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ flex: '1 1 150px' }}><label>Club Role</label>
+                  <select value={playerForm.role} onChange={e => setPlayerForm({...playerForm, role: e.target.value})}>
+                    <option value="player">Player</option>
+                    <option value="coach">Coach / Staff</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ flex: '1 1 200px' }}><label>Profile Photo</label><input type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'squad')} /></div>
+              </div>
+
+              <button
+                type="submit"
+                className="submit-btn"
+                disabled={isSubmittingPlayer}
+                style={{ background: '#2563eb', color: '#fff', width: '100%', padding: '0.85rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', transition: 'all 0.2s ease', marginTop: '1rem' }}
+                onMouseOver={(e) => { e.target.style.background = '#1d4ed8'; e.target.style.transform = 'translateY(-2px)'; }}
+                onMouseOut={(e) => { e.target.style.background = '#2563eb'; e.target.style.transform = 'translateY(0)'; }}
+                onMouseDown={(e) => e.target.style.transform = 'scale(0.98)'}
+                onMouseUp={(e) => e.target.style.transform = 'translateY(-2px)'}
+              >
+                {editingPlayerId ? "💾 Save Changes" : "➕ Register to Roster"}
+              </button>
+              {editingPlayerId && (
+                <button
+                  type="button"
+                  onClick={() => { setEditingPlayerId(null); setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '', age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' }); }}
+                  style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                >
+                  Cancel Edit
                 </button>
               )}
-            </>
+            </form>
+
+            <div style={listContainerStyle}>
+              <h3 style={listHeaderStyle}>Current Roster ({players.length})</h3>
+              {players.map(item => (
+                <div key={item._id} style={listRowStyle}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.name}</strong>
+                    <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>
+                      {item.position} • <span className="role-tag">{item.role === 'coach' ? 'Staff' : item.squadCategory}</span>
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditPlayer(item)}>Edit</button>
+                    <button type="button" className="delete-btn" disabled={deletingItemKey === `players:${item._id}`} onClick={() => deleteItem(item._id, 'players')}>Delete</button>
+                  </div>
+                </div>
+                ))}
+                {players.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No squad members added yet.</div>}
+              </div>
+            </div>
           )}
-        </div>
-      )}
 
-      {/* --- NEWS SECTION --- */}
-      {activeTab === 'news' && (
-        <div className="admin-panel" style={panelStyle}>
-          <form onSubmit={handleAddNews} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
-            <h3>{editingNewsId ? "📝 Edit Article" : "Post New Article"}</h3>
-            <div className="form-group"><label>Article Title</label><input type="text" placeholder="e.g. Match Victory!" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} /></div>
-            <div className="form-group"><label>Cover Image</label><input type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'news')} /></div>
-            <div className="form-group"><label>Publish Date (Optional)</label><input type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} /></div>
-            <div className="form-group"><label>Article Content</label><textarea placeholder="Write article text here..." rows="4" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea></div>
-            <button type="submit" className="submit-btn" disabled={isSubmittingNews}>{editingNewsId ? "Save Changes" : "Publish Post"}</button>
-            {editingNewsId && (
-              <button type="button" onClick={() => { setEditingNewsId(null); setNewsForm({ title: '', content: '', imageUrl: '', date: '' }); }} style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>Cancel Edit</button>
-            )}
-          </form>
-          
-          <div style={listContainerStyle}>
-            <h3 style={listHeaderStyle}>Current Articles ({news.length})</h3>
-            {news.map(item => (
-              <div key={item._id} style={listRowStyle}>
-                <div style={{ flex: '1 1 200px' }}>
-                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.title}</strong>
-                  <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.date}</p>
+        {/* --- GALLERY SECTION --- */}
+        {activeTab === 'gallery' && (
+          <div className="admin-panel" style={panelStyle}>
+            <form onSubmit={handleAddGallery} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
+              <h3>Upload Media Item</h3>
+              <div className="form-group"><label>Select Media File</label><input type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'gallery')} /></div>
+              <div className="form-group"><label>Description / Caption</label><input type="text" placeholder="Highlights" value={galleryForm.caption} onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})} /></div>
+              <div className="form-group"><label>Media Type</label><select value={galleryForm.type} onChange={e => setGalleryForm({...galleryForm, type: e.target.value})}><option value="image">Photo Upload</option><option value="video">Video Loop</option></select></div>
+              <button type="submit" className="submit-btn" disabled={isSubmittingGallery}>Add to Gallery</button>
+            </form>
+
+            <div style={listContainerStyle}>
+              <h3 style={listHeaderStyle}>Current Assets ({gallery.length})</h3>
+              {gallery.map(item => (
+                <div key={item._id} style={listRowStyle}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.caption || "Untitled"}</strong>
+                    <p className="subtext type-tag" style={{ marginTop: '0.35rem', display: 'inline-block' }}>{item.type}</p>
+                  </div>
+                  <button type="button" className="delete-btn" disabled={deletingItemKey === `gallery:${item._id}`} onClick={() => deleteItem(item._id, 'gallery')}>Delete</button>
                 </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditNews(item)}>Edit</button>
-                  <button type="button" className="delete-btn" disabled={deletingItemKey === `news:${item._id}`} onClick={() => deleteItem(item._id, 'news')}>Delete</button>
-                </div>
-              </div>
-            ))}
-            {news.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No articles published yet.</div>}
+              ))}
+              {gallery.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No media uploaded yet.</div>}
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* --- FIXTURES SECTION --- */}
-      {activeTab === 'fixtures' && (
-        <div className="admin-panel" style={panelStyle}>
-          <form onSubmit={handleAddFixture} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
-            <h3>Log New Match Fixture</h3>
-            <div className="form-group"><label>Opponent Team Name</label><input type="text" placeholder="e.g. Black Dragon FC" value={fixtureForm.opponent} onChange={e => setFixtureForm({...fixtureForm, opponent: e.target.value})} /></div>
-            <div className="form-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-              <div style={{ flex: '1 1 150px' }}><label>Match Date</label><input type="text" placeholder="e.g. 18/07/2026" value={fixtureForm.matchDate} onChange={e => setFixtureForm({...fixtureForm, matchDate: e.target.value})} /></div>
-              <div style={{ flex: '1 1 150px' }}><label>Kickoff Time</label><input type="text" value={fixtureForm.kickoffTime} onChange={e => setFixtureForm({...fixtureForm, kickoffTime: e.target.value})} /></div>
-            </div>
-            <div className="form-group"><label>Stadium Venue</label><input type="text" value={fixtureForm.venue} onChange={e => setFixtureForm({...fixtureForm, venue: e.target.value})} /></div>
-            <div className="form-group" style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px' }}><label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}><input type="checkbox" checked={fixtureForm.isHomeMatch} onChange={e => setFixtureForm({...fixtureForm, isHomeMatch: e.target.checked})} />🏠 Home Match</label></div>
-            <div className="form-group"><label>Match Progress Status</label><select value={fixtureForm.status} onChange={e => setFixtureForm({...fixtureForm, status: e.target.value})}><option value="Upcoming">🗓️ Upcoming Match</option><option value="Completed">🏆 Completed</option></select></div>
-            {fixtureForm.status === 'Completed' && (
-              <div className="form-group" style={{ display: 'flex', gap: '1rem', background: '#f0fdf4', padding: '1rem', borderRadius: '8px' }}>
-                <div><label>Junda Score</label><input type="number" min="0" value={fixtureForm.jundaScore} onChange={e => setFixtureForm({...fixtureForm, jundaScore: e.target.value})} style={{ width: '70px' }} /></div>
-                <div style={{ fontWeight: 'bold', alignSelf: 'center', marginTop: '1rem' }}>VS</div>
-                <div><label>Opponent Score</label><input type="number" min="0" value={fixtureForm.opponentScore} onChange={e => setFixtureForm({...fixtureForm, opponentScore: e.target.value})} style={{ width: '70px' }} /></div>
-              </div>
-            )}
-            <button type="submit" className="submit-btn" disabled={isSubmittingFixture}>Save Match Entry</button>
-          </form>
-
-          <div style={listContainerStyle}>
-            <h3 style={listHeaderStyle}>Active Match Logs ({fixtures?.length || 0})</h3>
-            {(fixtures || []).map(item => (
-              <div key={item._id} style={listRowStyle}>
-                <div style={{ flex: '1 1 200px' }}>
-                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Junda United vs {item.opponent}</strong>
-                  <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.matchDate} • {item.status === 'Completed' ? `Score: ${item.jundaScore}-${item.opponentScore}` : 'Upcoming'}</p>
-                </div>
-                <button type="button" className="delete-btn" disabled={deletingItemKey === `fixtures:${item._id}`} onClick={() => deleteItem(item._id, 'fixtures')}>Delete</button>
-              </div>
-            ))}
-            {(!fixtures || fixtures.length === 0) && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No fixtures logged yet.</div>}
-          </div>
-        </div>
-      )}
-
-      {/* --- STANDINGS SECTION --- */}
-      {activeTab === 'standings' && (
-        <div className="admin-panel" style={panelStyle}>
-          <form onSubmit={handleStandingSubmit} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
-            <h3>📊 Update League Standings Table</h3>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-              <div className="form-group" style={{ flex: '1 1 100px' }}><label>Pos (Rank)</label><input type="number" min="1" value={standingForm.rank} onChange={e => setStandingForm({...standingForm, rank: e.target.value})} /></div>
-              <div className="form-group" style={{ flex: '2 1 200px' }}><label>Club Name</label><input type="text" placeholder="e.g. Junda United FC" value={standingForm.name} onChange={e => setStandingForm({...standingForm, name: e.target.value})} required /></div>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '0.5rem' }}>
-              <div className="form-group"><label>P</label><input type="number" value={standingForm.p} onChange={e => setStandingForm({...standingForm, p: e.target.value})} /></div>
-              <div className="form-group"><label>W</label><input type="number" value={standingForm.w} onChange={e => setStandingForm({...standingForm, w: e.target.value})} /></div>
-              <div className="form-group"><label>D</label><input type="number" value={standingForm.d} onChange={e => setStandingForm({...standingForm, d: e.target.value})} /></div>
-              <div className="form-group"><label>L</label><input type="number" value={standingForm.l} onChange={e => setStandingForm({...standingForm, l: e.target.value})} /></div>
-              <div className="form-group"><label>GF</label><input type="number" value={standingForm.gf} onChange={e => setStandingForm({...standingForm, gf: e.target.value})} /></div>
-              <div className="form-group"><label>GA</label><input type="number" value={standingForm.ga} onChange={e => setStandingForm({...standingForm, ga: e.target.value})} /></div>
-              <div className="form-group"><label>Pts</label><input type="number" value={standingForm.pts} onChange={e => setStandingForm({...standingForm, pts: e.target.value})} style={{ fontWeight: 'bold' }} /></div>
-            </div>
-            
-            <div className="form-group"><label>Form History (Comma separated)</label><input type="text" placeholder="W,W,D,L,W" value={standingForm.formInput} onChange={e => setStandingForm({...standingForm, formInput: e.target.value})} /></div>
-            <button 
-              type="submit" 
-              className="submit-btn" 
-              style={{ background: '#10b981', color: '#fff', width: '100%', padding: '0.85rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', transition: 'all 0.2s ease', marginTop: '1rem' }}
-              onMouseOver={(e) => { e.target.style.background = '#059669'; e.target.style.transform = 'translateY(-2px)'; }}
-              onMouseOut={(e) => { e.target.style.background = '#10b981'; e.target.style.transform = 'translateY(0)'; }}
-              onMouseDown={(e) => { e.target.style.transform = 'scale(0.98)'; }}
-              onMouseUp={(e) => { e.target.style.transform = 'translateY(-2px)'; }}
-              disabled={isSubmittingStanding}
-            >
-              💾 Save Team Metrics
-            </button>
-          </form>
-
-          <div style={listContainerStyle}>
-            <h3 style={listHeaderStyle}>Active League Table Rows ({standings?.length || 0})</h3>
-            {(standings || []).map(team => (
-              <div key={team._id} style={listRowStyle}>
-                <div style={{ flex: '1 1 200px' }}>
-                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.rank}. {team.name}</strong>
-                  <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span> • Record: P {team.p} W {team.w} D {team.d} L {team.l}</p>
-                </div>
-                <button type="button" className="delete-btn" disabled={deletingItemKey === `standings:${team._id}`} onClick={() => deleteItem(team._id, 'standings')}>Wipe</button>
-              </div>
-            ))}
-            {(!standings || standings.length === 0) && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No teams logged yet.</div>}
-          </div>
-        </div>
-      )}
-
-      {/* --- SQUAD SECTION --- */}
-      {activeTab === 'squad' && (
-        <div className="admin-panel" style={panelStyle}>
-          <form onSubmit={handleAddPlayer} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
-            <h3>{editingPlayerId ? "📝 Edit Roster Member" : "Add Roster Member"}</h3>
-            
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-              <div className="form-group" style={{ flex: '2 1 200px' }}><label>Full Name</label><input type="text" placeholder="e.g. Marcus Vance" value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} /></div>
-              <div className="form-group" style={{ flex: '1 1 150px' }}><label>Position</label><input type="text" placeholder="e.g. Striker" value={playerForm.position} onChange={e => setPlayerForm({...playerForm, position: e.target.value})} /></div>
-            </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-              <div className="form-group" style={{ flex: '1 1 100px' }}><label>Jersey #</label><input type="text" placeholder="e.g. 10" value={playerForm.jerseyNumber} onChange={e => setPlayerForm({...playerForm, jerseyNumber: e.target.value})} /></div>
-              <div className="form-group" style={{ flex: '1 1 100px' }}><label>Age</label><input type="number" placeholder="e.g. 21" value={playerForm.age} onChange={e => setPlayerForm({...playerForm, age: e.target.value})} /></div>
-              <div className="form-group" style={{ flex: '1 1 100px' }}><label>Apps</label><input type="number" value={playerForm.appearances} onChange={e => setPlayerForm({...playerForm, appearances: e.target.value})} /></div>
-              <div className="form-group" style={{ flex: '1 1 100px' }}><label>Goals</label><input type="number" value={playerForm.goals} onChange={e => setPlayerForm({...playerForm, goals: e.target.value})} /></div>
-            </div>
-
-            <div className="form-group"><label>Short Bio</label><textarea rows="2" placeholder="Brief player history..." value={playerForm.bio} onChange={e => setPlayerForm({...playerForm, bio: e.target.value})}></textarea></div>
-            <div className="form-group"><label>Contact Info (Email/Phone for Staff)</label><input type="text" placeholder="e.g. coach@jundaunited.com or +254..." value={playerForm.contact} onChange={e => setPlayerForm({...playerForm, contact: e.target.value})} /></div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-              <div className="form-group" style={{ flex: '1 1 150px' }}><label>Squad Category</label>
-                <select value={playerForm.squadCategory} onChange={e => setPlayerForm({...playerForm, squadCategory: e.target.value})}>
-                  <option value="First Team">First Team</option>
-                  <option value="Under 17">Under 17 (U-17)</option>
-                  <option value="Under 13">Under 13 (U-13)</option>
-                </select>
-              </div>
-              <div className="form-group" style={{ flex: '1 1 150px' }}><label>Club Role</label>
-                <select value={playerForm.role} onChange={e => setPlayerForm({...playerForm, role: e.target.value})}>
-                  <option value="player">Player</option>
-                  <option value="coach">Coach / Staff</option>
-                </select>
-              </div>
-              <div className="form-group" style={{ flex: '1 1 200px' }}><label>Profile Photo</label><input type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'squad')} /></div>
-            </div>
-
-            <button 
-              type="submit" 
-              className="submit-btn" 
-              disabled={isSubmittingPlayer}
-              style={{ background: '#2563eb', color: '#fff', width: '100%', padding: '0.85rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', transition: 'all 0.2s ease', marginTop: '1rem' }}
-              onMouseOver={(e) => { e.target.style.background = '#1d4ed8'; e.target.style.transform = 'translateY(-2px)'; }}
-              onMouseOut={(e) => { e.target.style.background = '#2563eb'; e.target.style.transform = 'translateY(0)'; }}
-              onMouseDown={(e) => e.target.style.transform = 'scale(0.98)'}
-              onMouseUp={(e) => e.target.style.transform = 'translateY(-2px)'}
-            >
-              {editingPlayerId ? "💾 Save Changes" : "➕ Register to Roster"}
-            </button>
-            {editingPlayerId && (
-              <button 
-                type="button" 
-                onClick={() => { setEditingPlayerId(null); setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '', age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' }); }} 
-                style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
-              >
-                Cancel Edit
-              </button>
-            )}
-          </form>
-
-          <div style={listContainerStyle}>
-            <h3 style={listHeaderStyle}>Current Roster ({players.length})</h3>
-            {players.map(item => (
-              <div key={item._id} style={listRowStyle}>
-                <div style={{ flex: '1 1 200px' }}>
-                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.name}</strong>
-                  <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>
-                    {item.position} • <span className="role-tag">{item.role === 'coach' ? 'Staff' : item.squadCategory}</span>
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditPlayer(item)}>Edit</button>
-                  <button type="button" className="delete-btn" disabled={deletingItemKey === `players:${item._id}`} onClick={() => deleteItem(item._id, 'players')}>Delete</button>
-                </div>
-              </div>
-            ))}
-            {players.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No squad members added yet.</div>}
-          </div>
-        </div>
-      )}
-
-      {/* --- GALLERY SECTION --- */}
-      {activeTab === 'gallery' && (
-        <div className="admin-panel" style={panelStyle}>
-          <form onSubmit={handleAddGallery} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
-            <h3>Upload Media Item</h3>
-            <div className="form-group"><label>Select Media File</label><input type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'gallery')} /></div>
-            <div className="form-group"><label>Description / Caption</label><input type="text" placeholder="Highlights" value={galleryForm.caption} onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})} /></div>
-            <div className="form-group"><label>Media Type</label><select value={galleryForm.type} onChange={e => setGalleryForm({...galleryForm, type: e.target.value})}><option value="image">Photo Upload</option><option value="video">Video Loop</option></select></div>
-            <button type="submit" className="submit-btn" disabled={isSubmittingGallery}>Add to Gallery</button>
-          </form>
-
-          <div style={listContainerStyle}>
-            <h3 style={listHeaderStyle}>Current Assets ({gallery.length})</h3>
-            {gallery.map(item => (
-              <div key={item._id} style={listRowStyle}>
-                <div style={{ flex: '1 1 200px' }}>
-                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.caption || "Untitled"}</strong>
-                  <p className="subtext type-tag" style={{ marginTop: '0.35rem', display: 'inline-block' }}>{item.type}</p>
-                </div>
-                <button type="button" className="delete-btn" disabled={deletingItemKey === `gallery:${item._id}`} onClick={() => deleteItem(item._id, 'gallery')}>Delete</button>
-              </div>
-            ))}
-            {gallery.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No media uploaded yet.</div>}
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </AdminLayout>
   );
 }
