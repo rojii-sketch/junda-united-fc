@@ -162,6 +162,7 @@
   width: 100%;
   max-width: calc(100vw - 240px); /* Account for sidebar width */
   margin: 0 auto;
+  overflow-x: hidden;
 }
 
 /* Responsive adjustments */
@@ -385,6 +386,154 @@
 .delete-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+/* Admin workspace polish & feedback states */
+
+/* Panel variant: vertical stack for management sections */
+.admin-panel--stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  align-items: stretch;
+}
+
+/* Full-width admin forms inside the workspace */
+.admin-workspace__content .admin-form {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Edit-in-progress highlight on forms */
+.admin-form--editing {
+  border: 2px solid var(--admin-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12), 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Section list containers */
+.admin-list {
+  width: 100%;
+  box-sizing: border-box;
+  max-height: 450px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #f1f5f9;
+  padding: 1.25rem;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.admin-list__header {
+  position: sticky;
+  top: -1.25rem;
+  background: #f1f5f9;
+  padding-top: 1rem;
+  padding-bottom: 0.75rem;
+  margin: 0 0 1rem;
+  border-bottom: 2px solid #e2e8f0;
+  z-index: 10;
+}
+
+.admin-list__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  background: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.admin-list__info {
+  flex: 1 1 200px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Shared loading / empty / error placeholder for lists */
+.admin-list__state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: #64748b;
+}
+
+.admin-list__state--error {
+  color: #b91c1c;
+}
+
+/* Inline feedback banners (upload / loading / error) */
+.admin-feedback {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.admin-feedback--info,
+.admin-feedback--loading {
+  background: #ebf8ff;
+  color: #2b6cb0;
+}
+
+.admin-feedback--error {
+  background: #fff5f5;
+  color: #c53030;
+}
+
+/* CSS spinner for async actions */
+@keyframes admin-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  flex-shrink: 0;
+  vertical-align: middle;
+  margin-right: 0.4rem;
+  animation: admin-spin 0.7s linear infinite;
+}
+
+/* Center inline progress (spinner + label) inside action buttons */
+.submit-btn,
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Narrow-screen list/action adjustments */
+@media (max-width: 480px) {
+  .admin-list__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-list__info {
+    flex: none;
+  }
+
+  .admin-row-actions {
+    justify-content: flex-end;
+  }
 }
 
 /* Reduced motion */
