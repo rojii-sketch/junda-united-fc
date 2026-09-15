@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import Fixture from './models/Fixture.js'
 import cors from 'cors';
 import Standing from './models/Standing.js';
+import StandingsTable from './models/StandingsTable.js';
 import dotenv from 'dotenv';
 import Admin from './models/Admin.js';
 
@@ -169,6 +170,23 @@ const trimStringFields = (body, fields) => {
 
   return normalized;
 };
+
+const isNonNegativeInteger = (value) => (
+  Number.isInteger(value) && value >= 0
+);
+
+const isPositiveInteger = (value) => (
+  Number.isInteger(value) && value >= 1
+);
+
+const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const isValidSlug = (value) => (
+  isNonEmptyString(value) && slugPattern.test(value)
+);
+
+const isValidFormArray = (value) => (
+  Array.isArray(value) && value.every((result) => ['W', 'D', 'L'].includes(result))
+);
 
 // 🛡️ THE MAGIC CACHE SHIELD
 app.use('/api', (req, res, next) => {
@@ -770,6 +788,247 @@ app.delete('/api/standings/:id', requireAuth, mutationRateLimit, async (req, res
       return res.status(404).json({ error: 'Team not found' });
     }
 
+    return res.json({ message: 'Team removed' });
+  } catch {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+
+// ==========================================================
+// 📊 MULTI-STANDINGS TABLE ENDPOINTS
+// ==========================================================
+app.get('/api/standings-tables', async (req, res) => {
+  try {
+    const standingsTables = await StandingsTable.find()
+      .sort({ displayOrder: 1, createdAt: 1 })
+      .select('-__v')
+      .lean();
+    res.json(standingsTables);
+  } catch {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/standings-tables', requireAuth, mutationRateLimit, async (req, res) => {
+  const allowedFields = ['category', 'league', 'slug', 'displayOrder'];
+
+  if (
+    !isPlainObject(req.body) ||
+    !hasOnlyAllowedFields(req.body, allowedFields) ||
+    !isNonEmptyString(req.body.category) ||
+    !isNonEmptyString(req.body.league) ||
+    !isValidSlug(req.body.slug) ||
+    (req.body.displayOrder !== undefined && !isNonNegativeInteger(req.body.displayOrder))
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const table = trimStringFields(req.body, ['category', 'league', 'slug']);
+
+  try {
+    const savedTable = await StandingsTable.create(table);
+    return res.status(201).json(savedTable.toObject({ versionKey: false }));
+  } catch (error) {
+    if (error && error.code === 11000) {
+      return res.status(409).json({ error: 'A standings table with this slug already exists' });
+    }
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+});
+
+app.get('/api/standings-tables/:id', async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try {
+    const standingsTable = await StandingsTable.findById(req.params.id)
+      .select('-__v')
+      .lean();
+    if (!standingsTable) {
+      return res.status(404).json({ error: 'Standings table not found' });
+    }
+    return res.json(standingsTable);
+  } catch {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/api/standings-tables/:id', requireAuth, mutationRateLimit, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id) || !isPlainObject(req.body)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try {
+    const allowedFields = ['category', 'league', 'slug', 'displayOrder'];
+    if (!hasOnlyAllowedFields(req.body, allowedFields)) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    const updates = trimStringFields(Object.fromEntries(
+      Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
+    ), ['category', 'league', 'slug']);
+
+    if (
+      Object.keys(updates).length === 0 ||
+      ('category' in updates && !isNonEmptyString(updates.category)) ||
+      ('league' in updates && !isNonEmptyString(updates.league)) ||
+      ('slug' in updates && !isValidSlug(updates.slug)) ||
+      ('displayOrder' in updates && !isNonNegativeInteger(updates.displayOrder))
+    ) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    const updatedTable = await StandingsTable.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedTable) {
+      return res.status(404).json({ error: 'Standings table not found' });
+    }
+
+    return res.json(updatedTable.toObject({ versionKey: false }));
+  } catch (error) {
+    if (error && error.code === 11000) {
+      return res.status(409).json({ error: 'A standings table with this slug already exists' });
+    }
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+});
+
+app.delete('/api/standings-tables/:id', requireAuth, mutationRateLimit, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try {
+    const deletedTable = await StandingsTable.findByIdAndDelete(req.params.id);
+
+    if (!deletedTable) {
+      return res.status(404).json({ error: 'Standings table not found' });
+    }
+
+    return res.json({ message: 'Standings table removed' });
+  } catch {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/standings-tables/:id/teams', requireAuth, mutationRateLimit, async (req, res) => {
+  const allowedFields = ['rank', 'name', 'p', 'w', 'd', 'l', 'gf', 'ga', 'pts', 'form'];
+
+  if (
+    !mongoose.isValidObjectId(req.params.id) ||
+    !isPlainObject(req.body) ||
+    !hasOnlyAllowedFields(req.body, allowedFields) ||
+    !isNonEmptyString(req.body.name) ||
+    !isPositiveInteger(req.body.rank) ||
+    !['p', 'w', 'd', 'l', 'gf', 'ga', 'pts'].every((field) => (
+      req.body[field] === undefined || isNonNegativeInteger(req.body[field])
+    )) ||
+    (req.body.form !== undefined && !isValidFormArray(req.body.form))
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const team = trimStringFields(req.body, ['name']);
+
+  try {
+    const standingsTable = await StandingsTable.findById(req.params.id);
+    if (!standingsTable) {
+      return res.status(404).json({ error: 'Standings table not found' });
+    }
+
+    const normalizedName = team.name.trim().toLowerCase();
+    const existingIndex = standingsTable.teams.findIndex(
+      (existingTeam) => existingTeam.name.trim().toLowerCase() === normalizedName
+    );
+
+    if (existingIndex > -1) {
+      const targetTeam = standingsTable.teams[existingIndex];
+      targetTeam.set(team);
+      await standingsTable.save();
+      return res.json(targetTeam.toObject({ versionKey: false }));
+    }
+
+    standingsTable.teams.push(team);
+    await standingsTable.save();
+    const createdTeam = standingsTable.teams[standingsTable.teams.length - 1];
+    return res.status(201).json(createdTeam.toObject({ versionKey: false }));
+  } catch {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+});
+
+app.put('/api/standings-tables/:id/teams/:teamId', requireAuth, mutationRateLimit, async (req, res) => {
+  const allowedFields = ['rank', 'name', 'p', 'w', 'd', 'l', 'gf', 'ga', 'pts', 'form'];
+
+  if (
+    !mongoose.isValidObjectId(req.params.id) ||
+    !mongoose.isValidObjectId(req.params.teamId) ||
+    !isPlainObject(req.body) ||
+    !hasOnlyAllowedFields(req.body, allowedFields)
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const team = trimStringFields(req.body, ['name']);
+
+  if (
+    Object.keys(team).length === 0 ||
+    ('name' in team && !isNonEmptyString(team.name)) ||
+    ('rank' in team && !isPositiveInteger(team.rank)) ||
+    !['p', 'w', 'd', 'l', 'gf', 'ga', 'pts'].every((field) => (
+      !(field in team) || isNonNegativeInteger(team[field])
+    )) ||
+    ('form' in team && !isValidFormArray(team.form))
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try {
+    const standingsTable = await StandingsTable.findById(req.params.id);
+    if (!standingsTable) {
+      return res.status(404).json({ error: 'Standings table not found' });
+    }
+
+    const targetTeam = standingsTable.teams.id(req.params.teamId);
+    if (!targetTeam) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    targetTeam.set(team);
+    await standingsTable.save();
+    return res.json(targetTeam.toObject({ versionKey: false }));
+  } catch {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+});
+
+app.delete('/api/standings-tables/:id/teams/:teamId', requireAuth, mutationRateLimit, async (req, res) => {
+  if (
+    !mongoose.isValidObjectId(req.params.id) ||
+    !mongoose.isValidObjectId(req.params.teamId)
+  ) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try {
+    const standingsTable = await StandingsTable.findById(req.params.id);
+    if (!standingsTable) {
+      return res.status(404).json({ error: 'Standings table not found' });
+    }
+
+    const targetTeam = standingsTable.teams.id(req.params.teamId);
+    if (!targetTeam) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    targetTeam.deleteOne();
+    await standingsTable.save();
     return res.json({ message: 'Team removed' });
   } catch {
     return res.status(500).json({ error: 'Internal server error' });
