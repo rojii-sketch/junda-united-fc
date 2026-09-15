@@ -501,17 +501,17 @@ export default function Admin({
             <h2>Admin Management Dashboard</h2>
             <p>Create, update and remove club assets in real-time.</p>
           </div>
-          <button onClick={handleLogout} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+          <button type="button" onClick={handleLogout} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
             Log Out
           </button>
         </header>
 
         <div className="admin-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <button className={activeTab === 'news' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('news')}>Manage News</button>
-          <button className={activeTab === 'fixtures' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('fixtures')}>Manage Fixtures</button>
-          <button className={activeTab === 'standings' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('standings')}>Manage Standings</button>
-          <button className={activeTab === 'squad' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('squad')}>Manage Squad</button>
-          <button className={activeTab === 'gallery' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('gallery')}>Manage Gallery</button>
+          <button type="button" className={activeTab === 'news' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('news')}>Manage News</button>
+          <button type="button" className={activeTab === 'fixtures' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('fixtures')}>Manage Fixtures</button>
+          <button type="button" className={activeTab === 'standings' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('standings')}>Manage Standings</button>
+          <button type="button" className={activeTab === 'squad' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('squad')}>Manage Squad</button>
+          <button type="button" className={activeTab === 'gallery' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('gallery')}>Manage Gallery</button>
         </div>
 
         {isUploading && (
@@ -549,7 +549,7 @@ export default function Admin({
               <div className="form-group"><label>Article Content</label><textarea placeholder="Write article text here..." rows="4" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea></div>
               <button type="submit" className="submit-btn" disabled={isSubmittingNews}>{editingNewsId ? "Save Changes" : "Publish Post"}</button>
               {editingNewsId && (
-                <button type="button" onClick={() => { setEditingNewsId(null); setNewsForm({ title: '', content: '', imageUrl: '', date: '' }); }} style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>Cancel Edit</button>
+                <button type="button" className="cancel-btn" onClick={() => { setEditingNewsId(null); setNewsForm({ title: '', content: '', imageUrl: '', date: '' }); }}>Cancel Edit</button>
               )}
             </form>
 
@@ -561,8 +561,8 @@ export default function Admin({
                     <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.title}</strong>
                     <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.date}</p>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditNews(item)}>Edit</button>
+                  <div className="admin-row-actions">
+                    <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditNews(item)}>Edit</button>
                     <button type="button" className="delete-btn" disabled={deletingItemKey === `news:${item._id}`} onClick={() => deleteItem(item._id, 'news')}>Delete</button>
                   </div>
                 </div>
@@ -634,12 +634,7 @@ export default function Admin({
               <div className="form-group"><label>Form History (Comma separated)</label><input type="text" placeholder="W,W,D,L,W" value={standingForm.formInput} onChange={e => setStandingForm({...standingForm, formInput: e.target.value})} /></div>
               <button
                 type="submit"
-                className="submit-btn"
-                style={{ background: '#10b981', color: '#fff', width: '100%', padding: '0.85rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', transition: 'all 0.2s ease', marginTop: '1rem' }}
-                onMouseOver={(e) => { e.target.style.background = '#059669'; e.target.style.transform = 'translateY(-2px)'; }}
-                onMouseOut={(e) => { e.target.style.background = '#10b981'; e.target.style.transform = 'translateY(0)'; }}
-                onMouseDown={(e) => { e.target.style.transform = 'scale(0.98)'; }}
-                onMouseUp={(e) => { e.target.style.transform = 'translateY(-2px)'; }}
+                className="submit-btn submit-btn--success"
                 disabled={isSubmittingStanding}
               >
                 {editingStandingId ? "💾 Save Changes" : "💾 Save Team Metrics"}
@@ -647,8 +642,8 @@ export default function Admin({
               {editingStandingId && (
                 <button
                   type="button"
+                  className="cancel-btn"
                   onClick={() => { setEditingStandingId(null); setStandingForm({ rank: 1, name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W' }); }}
-                  style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
                 >
                   Cancel Edit
                 </button>
@@ -663,9 +658,9 @@ export default function Admin({
                     <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.rank}. {team.name}</strong>
                     <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span> • Record: P {team.p} W {team.w} D {team.d} L {team.l}</p>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditStanding(team)}>Edit</button>
-                    <button type="button" className="delete-btn" disabled={deletingItemKey === `standings:${team._id}`} onClick={() => deleteItem(team._id, 'standings')}>Wipe</button>
+                  <div className="admin-row-actions">
+                    <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditStanding(team)}>Edit</button>
+                    <button type="button" className="delete-btn" disabled={deletingItemKey === `standings:${team._id}`} onClick={() => deleteItem(team._id, 'standings')}>Delete</button>
                   </div>
                 </div>
               ))}
@@ -714,21 +709,16 @@ export default function Admin({
 
               <button
                 type="submit"
-                className="submit-btn"
+                className="submit-btn submit-btn--primary"
                 disabled={isSubmittingPlayer}
-                style={{ background: '#2563eb', color: '#fff', width: '100%', padding: '0.85rem', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '8px', border: 'none', cursor: 'pointer', transition: 'all 0.2s ease', marginTop: '1rem' }}
-                onMouseOver={(e) => { e.target.style.background = '#1d4ed8'; e.target.style.transform = 'translateY(-2px)'; }}
-                onMouseOut={(e) => { e.target.style.background = '#2563eb'; e.target.style.transform = 'translateY(0)'; }}
-                onMouseDown={(e) => e.target.style.transform = 'scale(0.98)'}
-                onMouseUp={(e) => e.target.style.transform = 'translateY(-2px)'}
               >
                 {editingPlayerId ? "💾 Save Changes" : "➕ Register to Roster"}
               </button>
               {editingPlayerId && (
                 <button
                   type="button"
+                  className="cancel-btn"
                   onClick={() => { setEditingPlayerId(null); setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '', age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' }); }}
-                  style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
                 >
                   Cancel Edit
                 </button>
@@ -745,8 +735,8 @@ export default function Admin({
                       {item.position} • <span className="role-tag">{item.role === 'coach' ? 'Staff' : item.squadCategory}</span>
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditPlayer(item)}>Edit</button>
+                  <div className="admin-row-actions">
+                    <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditPlayer(item)}>Edit</button>
                     <button type="button" className="delete-btn" disabled={deletingItemKey === `players:${item._id}`} onClick={() => deleteItem(item._id, 'players')}>Delete</button>
                   </div>
                 </div>

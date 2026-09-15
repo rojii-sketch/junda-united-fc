@@ -313,6 +313,80 @@
   }
 }
 
+/* Admin action button consistency (consolidated from repeated inline styles) */
+
+/* Cancel-edit button used across edit workflows */
+.cancel-btn {
+  background: var(--admin-danger);
+  color: #fff;
+  width: 100%;
+  padding: 0.6rem;
+  margin-top: 0.5rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.cancel-btn:hover {
+  background: #dc2626;
+}
+
+/* Row action button group (Edit / Delete) */
+.admin-row-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Compact action within list rows (Edit) */
+.tab-btn--compact {
+  padding: 0.25rem 0.75rem;
+}
+
+/* Section submit button variants */
+.submit-btn--success {
+  background: #10b981;
+  width: 100%;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.submit-btn--success:hover {
+  background: #059669;
+  transform: translateY(-2px);
+}
+
+.submit-btn--success:active {
+  transform: scale(0.98);
+}
+
+.submit-btn--primary {
+  background: #2563eb;
+  width: 100%;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.submit-btn--primary:hover {
+  background: #1d4ed8;
+  transform: translateY(-2px);
+}
+
+.submit-btn--primary:active {
+  transform: scale(0.98);
+}
+
+/* Visible disabled state for in-flight actions */
+.submit-btn:disabled,
+.cancel-btn:disabled,
+.tab-btn:disabled,
+.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,
