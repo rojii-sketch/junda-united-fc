@@ -1,6 +1,13 @@
 // src/App.jsx
-import { lazy, Suspense, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  useLocation,
+  useNavigationType
+} from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { Analytics } from '@vercel/analytics/react';
 
 import Navbar from './components/Navbar';
@@ -8,6 +15,7 @@ import News from './pages/News';
 import Footer from './components/Footer';
 import './App.css';
 import { API_BASE, fetchJson } from './api';
+import PageTransition from './components/PageTransition';
 
 const ArticleDetail = lazy(() => import('./pages/ArticleDetail'));
 const Gallery = lazy(() => import('./pages/Gallery'));
@@ -23,29 +31,75 @@ export default function App() {
       <Navbar /> 
 
       <Suspense fallback={<RouteLoadingFallback />}>
-        <Routes>
-          <Route path="/" element={<News />} />
-          <Route path="/gallery" element={<Gallery />} />
-
-          {/* SQUAD ROUTES */}
-          <Route path="/squad" element={<Players />} />
-          <Route path="/squad/:id" element={<PlayerProfile />} />
-
-          {/* MATCH CENTRE */}
-          <Route path="/fixtures" element={<FixturesPage />} />
-
-          {/* ADMIN PANEL */}
-          <Route path="/admin" element={<AdminRoute />} />
-
-          {/* INDIVIDUAL NEWS ARTICLE */}
-          <Route path="/news/:id" element={<ArticleDetail />} />
-        </Routes>
+        <AppRoutes />
       </Suspense>
 
       {/* Bottom Brand Anchor */}
       <Footer />
       <Analytics />
     </BrowserRouter>
+  );
+}
+
+function AppRoutes() {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  const isFirstNavigation = useRef(true);
+
+  useEffect(() => {
+    if (isFirstNavigation.current) {
+      isFirstNavigation.current = false;
+      if (!location.hash) {
+        window.scrollTo(0, 0);
+      }
+      return;
+    }
+
+    if (navigationType === 'POP') return;
+
+    if (!location.hash) {
+      window.scrollTo(0, 0);
+    }
+  }, [location.pathname, location.hash, navigationType]);
+
+  return (
+    <AnimatePresence>
+      <Routes location={location} key={location.pathname}>
+        <Route
+          path="/"
+          element={<PageTransition><News /></PageTransition>}
+        />
+        <Route
+          path="/gallery"
+          element={<PageTransition><Gallery /></PageTransition>}
+        />
+
+        {/* SQUAD ROUTES */}
+        <Route
+          path="/squad"
+          element={<PageTransition><Players /></PageTransition>}
+        />
+        <Route
+          path="/squad/:id"
+          element={<PageTransition><PlayerProfile /></PageTransition>}
+        />
+
+        {/* MATCH CENTRE */}
+        <Route
+          path="/fixtures"
+          element={<PageTransition><FixturesPage /></PageTransition>}
+        />
+
+        {/* ADMIN PANEL */}
+        <Route path="/admin" element={<AdminRoute />} />
+
+        {/* INDIVIDUAL NEWS ARTICLE */}
+        <Route
+          path="/news/:id"
+          element={<PageTransition><ArticleDetail /></PageTransition>}
+        />
+      </Routes>
+    </AnimatePresence>
   );
 }
 
