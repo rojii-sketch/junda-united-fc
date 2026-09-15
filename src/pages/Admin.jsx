@@ -53,6 +53,7 @@ export default function Admin({
   const [deletingItemKey, setDeletingItemKey] = useState(null);
   const [editingNewsId, setEditingNewsId] = useState(null);
   const [editingPlayerId, setEditingPlayerId] = useState(null);
+  const [editingStandingId, setEditingStandingId] = useState(null);
 
   const getAuthHeaders = (isJson = true) => {
     const headers = { 'Authorization': `Bearer ${adminToken}` };
@@ -312,8 +313,8 @@ export default function Admin({
 
     setIsSubmittingStanding(true);
     try {
-      const res = await fetch(`${API_BASE}/standings`, {
-        method: 'POST',
+      const res = await fetch(editingStandingId ? `${API_BASE}/standings/${editingStandingId}` : `${API_BASE}/standings`, {
+        method: editingStandingId ? 'PUT' : 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload)
       });
@@ -323,21 +324,43 @@ export default function Admin({
         return;
       }
       const savedTeam = await res.json();
-      const matchesTeamName = (team) => team.name.toLowerCase() === savedTeam.name.toLowerCase();
-      const existingIdx = (standings || []).findIndex(matchesTeamName);
-      if (existingIdx > -1) {
-        setStandings(standings.map(t => matchesTeamName(t) ? savedTeam : t).sort((a,b) => a.rank - b.rank));
+      if (editingStandingId) {
+        setStandings((standings || []).map(t => t._id === editingStandingId ? savedTeam : t).sort((a,b) => a.rank - b.rank));
       } else {
-        setStandings([...(standings || []), savedTeam].sort((a,b) => a.rank - b.rank));
+        const matchesTeamName = (team) => team.name.toLowerCase() === savedTeam.name.toLowerCase();
+        const existingIdx = (standings || []).findIndex(matchesTeamName);
+        if (existingIdx > -1) {
+          setStandings(standings.map(t => matchesTeamName(t) ? savedTeam : t).sort((a,b) => a.rank - b.rank));
+        } else {
+          setStandings([...(standings || []), savedTeam].sort((a,b) => a.rank - b.rank));
+        }
       }
       setStandingForm({ rank: 1, name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W' });
-      alert('✅ Standings matrix row updated smoothly!');
+      if (editingStandingId) setEditingStandingId(null);
+      alert(editingStandingId ? '✅ Standings row updated successfully!' : '✅ Standings matrix row updated smoothly!');
     } catch (err) {
       console.error(err);
       alert('Network error communicating with the server.');
     } finally {
       setIsSubmittingStanding(false);
     }
+  };
+
+  const startEditStanding = (item) => {
+    setEditingStandingId(item._id);
+    setStandingForm({
+      rank: item.rank,
+      name: item.name,
+      p: item.p ?? 0,
+      w: item.w ?? 0,
+      d: item.d ?? 0,
+      l: item.l ?? 0,
+      gf: item.gf ?? 0,
+      ga: item.ga ?? 0,
+      pts: item.pts ?? 0,
+      formInput: Array.isArray(item.form) ? item.form.join(',') : (item.form || '')
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const deleteItem = async (id, type) => {
@@ -360,7 +383,7 @@ export default function Admin({
         if (type === 'players') { setPlayers(players.filter(item => item._id !== id)); if (editingPlayerId === id) setEditingPlayerId(null); }
         if (type === 'gallery') setGallery(gallery.filter(item => item._id !== id));
         if (type === 'fixtures') setFixtures(fixtures.filter(item => item._id !== id));
-        if (type === 'standings') setStandings(standings.filter(item => item._id !== id));
+        if (type === 'standings') { setStandings(standings.filter(item => item._id !== id)); if (editingStandingId === id) setEditingStandingId(null); }
         alert('Item dropped successfully from database records.');
       } else {
         alert('Failed to delete: Session may have expired. Please log in again.');
@@ -592,7 +615,7 @@ export default function Admin({
         {activeTab === 'standings' && (
           <div className="admin-panel" style={panelStyle}>
             <form onSubmit={handleStandingSubmit} className="admin-form" style={{ width: '100%', boxSizing: 'border-box' }}>
-              <h3>📊 Update League Standings Table</h3>
+              <h3>{editingStandingId ? "📝 Edit Standings Row" : "📊 Update League Standings Table"}</h3>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                 <div className="form-group" style={{ flex: '1 1 100px' }}><label>Pos (Rank)</label><input type="number" min="1" value={standingForm.rank} onChange={e => setStandingForm({...standingForm, rank: e.target.value})} /></div>
                 <div className="form-group" style={{ flex: '2 1 200px' }}><label>Club Name</label><input type="text" placeholder="e.g. Junda United FC" value={standingForm.name} onChange={e => setStandingForm({...standingForm, name: e.target.value})} required /></div>
@@ -619,8 +642,17 @@ export default function Admin({
                 onMouseUp={(e) => { e.target.style.transform = 'translateY(-2px)'; }}
                 disabled={isSubmittingStanding}
               >
-                💾 Save Team Metrics
+                {editingStandingId ? "💾 Save Changes" : "💾 Save Team Metrics"}
               </button>
+              {editingStandingId && (
+                <button
+                  type="button"
+                  onClick={() => { setEditingStandingId(null); setStandingForm({ rank: 1, name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W' }); }}
+                  style={{ background: '#ef4444', color: '#fff', width: '100%', padding: '0.6rem', marginTop: '0.5rem', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+                >
+                  Cancel Edit
+                </button>
+              )}
             </form>
 
             <div style={listContainerStyle}>
@@ -631,7 +663,10 @@ export default function Admin({
                     <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.rank}. {team.name}</strong>
                     <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span> • Record: P {team.p} W {team.w} D {team.d} L {team.l}</p>
                   </div>
-                  <button type="button" className="delete-btn" disabled={deletingItemKey === `standings:${team._id}`} onClick={() => deleteItem(team._id, 'standings')}>Wipe</button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" className="tab-btn" style={{ padding: '0.25rem 0.75rem' }} onClick={() => startEditStanding(team)}>Edit</button>
+                    <button type="button" className="delete-btn" disabled={deletingItemKey === `standings:${team._id}`} onClick={() => deleteItem(team._id, 'standings')}>Wipe</button>
+                  </div>
                 </div>
               ))}
               {(!standings || standings.length === 0) && <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>No teams logged yet.</div>}
