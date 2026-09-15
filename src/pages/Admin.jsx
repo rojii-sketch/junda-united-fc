@@ -445,6 +445,11 @@ export default function Admin({
 
   const { title: sectionTitle, description: sectionDescription } = sectionConfigs[activeTab] || { title: 'Admin Dashboard', description: 'Club management dashboard' };
 
+  const handleSelectSection = (tab) => {
+    setActiveTab(tab);
+    setIsSidebarOpen(false);
+  };
+
   const panelStyle = { display: 'flex', flexDirection: 'column', gap: '2rem', width: '100%' };
   const listContainerStyle = { width: '100%', boxSizing: 'border-box', maxHeight: '450px', overflowY: 'auto', overflowX: 'hidden', background: '#f1f5f9', padding: '1.25rem', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' };
   const listHeaderStyle = { position: 'sticky', top: '-1.25rem', background: '#f1f5f9', paddingTop: '1rem', paddingBottom: '0.75rem', marginTop: 0, marginBottom: '1rem', borderBottom: '2px solid #e2e8f0', zIndex: 10 };
@@ -461,9 +466,9 @@ export default function Admin({
     <AdminLayout
       sectionTitle={sectionTitle}
       sectionDescription={sectionDescription}
-      showLogout={true}
-      onLogout={handleLogout}
-      onSidebarToggle={() => setIsSidebarOpen(!isSidebarOpen)}
+      activeTab={activeTab}
+      onSelectSection={handleSelectSection}
+      onSidebarToggle={() => setIsSidebarOpen(open => !open)}
       isSidebarOpen={isSidebarOpen}
       setIsSidebarOpen={setIsSidebarOpen}
     >

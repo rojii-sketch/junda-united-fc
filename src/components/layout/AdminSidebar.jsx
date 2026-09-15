@@ -1,9 +1,19 @@
 // src/components/layout/AdminSidebar.jsx
 import React from 'react';
 
-export default function AdminSidebar({ isOpen, onToggle, sectionTitle, showLogout, onLogout }) {
+const NAV_ITEMS = [
+  { tab: 'news', label: 'News', icon: '📰' },
+  { tab: 'players', label: 'Squad', icon: '👥' },
+  { tab: 'fixtures', label: 'Fixtures', icon: '🏆' },
+  { tab: 'standings', label: 'Standings', icon: '📈' },
+  { tab: 'gallery', label: 'Gallery', icon: '🖼️' }
+];
+
+export default function AdminSidebar({ id, isOpen, isMobile, activeTab, onSelectSection }) {
+  const sidebarClassName = `admin-sidebar${isMobile ? (isOpen ? ' admin-sidebar--mobile-open' : ' admin-sidebar--mobile-closed') : ''}`;
+
   return (
-    <aside className={`admin-sidebar ${!isOpen && typeof window !== 'undefined' && window.innerWidth >= 768 ? 'admin-sidebar--collapsed' : ''} ${typeof window !== 'undefined' && window.innerWidth < 768 && !isOpen ? 'admin-sidebar--mobile-closed' : ''}`}>
+    <aside id={id} className={sidebarClassName}>
       <div className="admin-sidebar__header">
         {/* Logo placeholder - using text for now, can be replaced with image */}
         <div className="admin-sidebar__logo" aria-hidden="true">JU</div>
@@ -11,62 +21,19 @@ export default function AdminSidebar({ isOpen, onToggle, sectionTitle, showLogou
       </div>
 
       <nav className="admin-sidebar__nav" aria-label="Admin navigation">
-        <button
-          className={`admin-sidebar__item admin-sidebar__item--${sectionTitle === 'Dashboard' ? 'active' : ''}`}
-          onClick={onToggle}
-        >
-          <span className="admin-sidebar__item-icon">📊</span>
-          <span>Dashboard</span>
-        </button>
-        <button
-          className={`admin-sidebar__item admin-sidebar__item--${sectionTitle === 'News' ? 'active' : ''}`}
-          onClick={onToggle}
-        >
-          <span className="admin-sidebar__item-icon">📰</span>
-          <span>News</span>
-        </button>
-        <button
-          className={`admin-sidebar__item admin-sidebar__item--${sectionTitle === 'Players' ? 'active' : ''}`}
-          onClick={onToggle}
-        >
-          <span className="admin-sidebar__item-icon">👥</span>
-          <span>Players</span>
-        </button>
-        <button
-          className={`admin-sidebar__item admin-sidebar__item--${sectionTitle === 'Fixtures' ? 'active' : ''}`}
-          onClick={onToggle}
-        >
-          <span className="admin-sidebar__item-icon">🏆</span>
-          <span>Fixtures</span>
-        </button>
-        <button
-          className={`admin-sidebar__item admin-sidebar__item--${sectionTitle === 'Standings' ? 'active' : ''}`}
-          onClick={onToggle}
-        >
-          <span className="admin-sidebar__item-icon">📈</span>
-          <span>Standings</span>
-        </button>
-        <button
-          className={`admin-sidebar__item admin-sidebar__item--${sectionTitle === 'Gallery' ? 'active' : ''}`}
-          onClick={onToggle}
-        >
-          <span className="admin-sidebar__item-icon">🖼️</span>
-          <span>Gallery</span>
-        </button>
-      </nav>
-
-      {/* Logout section - only show in sidebar on desktop */}
-      {showLogout && (
-        <div className="admin-sidebar__logout">
+        {NAV_ITEMS.map((item) => (
           <button
-            className="admin-sidebar__logout-button"
-            onClick={onLogout}
+            key={item.tab}
+            type="button"
+            className={`admin-sidebar__item${activeTab === item.tab ? ' admin-sidebar__item--active' : ''}`}
+            onClick={() => onSelectSection(item.tab)}
+            aria-current={activeTab === item.tab ? 'page' : undefined}
           >
-            <span className="admin-sidebar__item-icon">🚪</span>
-            <span>Logout</span>
+            <span className="admin-sidebar__item-icon" aria-hidden="true">{item.icon}</span>
+            <span>{item.label}</span>
           </button>
-        </div>
-      )}
+        ))}
+      </nav>
     </aside>
   );
 }

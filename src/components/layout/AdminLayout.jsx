@@ -1,24 +1,49 @@
 // src/components/layout/AdminLayout.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 
-export default function AdminLayout({ children, sectionTitle, sectionDescription, showLogout = true, onLogout, onSidebarToggle, isSidebarOpen, setIsSidebarOpen }) {
+export default function AdminLayout({ children, sectionTitle, sectionDescription, activeTab, onSelectSection, onSidebarToggle, isSidebarOpen, setIsSidebarOpen }) {
+  const sidebarId = 'admin-sidebar';
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  useEffect(() => {
+    if (!isMobile || !isSidebarOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsSidebarOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobile, isSidebarOpen, setIsSidebarOpen]);
+
+  const handleSelectSection = (tab) => {
+    onSelectSection(tab);
+    setIsSidebarOpen(false);
+  };
+
   return (
     <div className="admin-ui">
       {/* Mobile backdrop */}
-      {typeof window !== 'undefined' && window.innerWidth < 768 && isSidebarOpen && (
-        <div className="admin-backdrop admin-backdrop--visible" onClick={onSidebarToggle} />
+      {isMobile && isSidebarOpen && (
+        <button
+          type="button"
+          className="admin-backdrop admin-backdrop--visible"
+          onClick={() => setIsSidebarOpen(false)}
+          aria-label="Close navigation"
+          style={{ border: 'none', padding: 0 }}
+        />
       )}
 
       <div className="admin-layout">
         {/* Sidebar */}
         <AdminSidebar
-          isOpen={typeof window !== 'undefined' && window.innerWidth < 768 ? isSidebarOpen : true}
-          onToggle={onSidebarToggle}
-          sectionTitle={sectionTitle}
-          showLogout={! (typeof window !== 'undefined' && window.innerWidth < 768)} // Only show logout in sidebar on desktop
-          onLogout={onLogout}
+          id={sidebarId}
+          isMobile={isMobile}
+          isOpen={isMobile ? isSidebarOpen : true}
+          activeTab={activeTab}
+          onSelectSection={handleSelectSection}
         />
 
         {/* Main workspace */}
@@ -26,10 +51,10 @@ export default function AdminLayout({ children, sectionTitle, sectionDescription
           <AdminHeader
             sectionTitle={sectionTitle}
             sectionDescription={sectionDescription}
-            showLogout={typeof window !== 'undefined' && window.innerWidth >= 768 && showLogout} // Show logout in header on desktop
-            onLogout={onLogout}
             onSidebarToggle={onSidebarToggle}
-            isMobile={typeof window !== 'undefined' && window.innerWidth < 768}
+            sidebarId={sidebarId}
+            isSidebarOpen={isSidebarOpen}
+            isMobile={isMobile}
           />
 
           <div className="admin-workspace__content">
