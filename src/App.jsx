@@ -146,7 +146,8 @@ function AdminRoute() {
     players: [],
     gallery: [],
     fixtures: [],
-    standings: []
+    standings: [],
+    standingsTables: []
   });
   const [isAuthenticated, setIsAuthenticated] = useState(
     () => Boolean(sessionStorage.getItem('junda_jwt'))
@@ -156,9 +157,16 @@ function AdminRoute() {
     players: 'idle',
     gallery: 'idle',
     fixtures: 'idle',
-    standings: 'idle'
+    standings: 'idle',
+    standingsTables: 'idle'
   });
   const [retryCount, setRetryCount] = useState(0);
+
+  const getAuthHeaders = (isJson = true) => {
+    const headers = { 'Authorization': `Bearer ${sessionStorage.getItem('junda_jwt') || ''}` };
+    if (isJson) headers['Content-Type'] = 'application/json';
+    return headers;
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -167,14 +175,16 @@ function AdminRoute() {
         players: [],
         gallery: [],
         fixtures: [],
-        standings: []
+        standings: [],
+        standingsTables: []
       });
       setCollectionStatuses({
         news: 'idle',
         players: 'idle',
         gallery: 'idle',
         fixtures: 'idle',
-        standings: 'idle'
+        standings: 'idle',
+        standingsTables: 'idle'
       });
       return undefined;
     }
@@ -185,7 +195,8 @@ function AdminRoute() {
       players: 'loading',
       gallery: 'loading',
       fixtures: 'loading',
-      standings: 'loading'
+      standings: 'loading',
+      standingsTables: 'loading'
     });
 
     let isCurrentRequest = true;
@@ -208,6 +219,7 @@ function AdminRoute() {
     loadCollection('gallery', '/gallery');
     loadCollection('fixtures', '/fixtures');
     loadCollection('standings', '/standings');
+    loadCollection('standingsTables', '/standings-tables');
 
     return () => {
       isCurrentRequest = false;
@@ -227,7 +239,11 @@ function AdminRoute() {
       setFixtures={value => setData(current => ({ ...current, fixtures: typeof value === 'function' ? value(current.fixtures) : value }))}
       standings={data.standings}
       setStandings={value => setData(current => ({ ...current, standings: typeof value === 'function' ? value(current.standings) : value }))}
+      standingsTables={data.standingsTables}
+      setStandingsTables={value => setData(current => ({ ...current, standingsTables: typeof value === 'function' ? value(current.standingsTables) : value }))}
+      standingsTablesStatus={collectionStatuses.standingsTables}
       API_BASE={API_BASE}
+      adminAuthHeaders={getAuthHeaders}
       collectionStatuses={collectionStatuses}
       onRetryData={() => setRetryCount(count => count + 1)}
       onAuthChange={authenticated => {

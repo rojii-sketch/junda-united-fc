@@ -1,6 +1,7 @@
 // src/pages/Admin.jsx
 import { useState, useEffect } from 'react';
 import AdminLayout from '../components/layout/AdminLayout';
+import StandingsTablesManager from '../components/admin/StandingsTablesManager';
 import '../Admin.css';
 
 export default function Admin({
@@ -9,6 +10,9 @@ export default function Admin({
   gallery, setGallery,
   fixtures, setFixtures,
   standings, setStandings,
+  standingsTables, setStandingsTables,
+  standingsTablesStatus,
+  adminAuthHeaders,
   API_BASE,
   collectionStatuses,
   onRetryData,
@@ -54,6 +58,9 @@ export default function Admin({
   const [editingNewsId, setEditingNewsId] = useState(null);
   const [editingPlayerId, setEditingPlayerId] = useState(null);
   const [editingStandingId, setEditingStandingId] = useState(null);
+
+  // 🎯 Sub-view toggle within the Standings tab (legacy single table vs multi-standings tables)
+  const [standingsSubview, setStandingsSubview] = useState('legacy');
 
   const getAuthHeaders = (isJson = true) => {
     const headers = { 'Authorization': `Bearer ${adminToken}` };
@@ -630,6 +637,13 @@ export default function Admin({
         {/* --- STANDINGS SECTION --- */}
         {activeTab === 'standings' && (
           <div className="admin-panel admin-panel--stacked">
+            <div className="admin-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+              <button type="button" className={standingsSubview === 'legacy' ? 'tab-btn active' : 'tab-btn'} onClick={() => setStandingsSubview('legacy')}>Singular Standings</button>
+              <button type="button" className={standingsSubview === 'tables' ? 'tab-btn active' : 'tab-btn'} onClick={() => setStandingsSubview('tables')}>Standings Tables</button>
+            </div>
+
+            {standingsSubview === 'legacy' && (
+            <>
             <form onSubmit={handleStandingSubmit} className={`admin-form${editingStandingId ? ' admin-form--editing' : ''}`}>
               <h3>{editingStandingId ? "📝 Edit Standings Row" : "📊 Update League Standings Table"}</h3>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
@@ -682,6 +696,20 @@ export default function Admin({
               ))}
               {(!standings || standings.length === 0) && renderListState(statusOf('standings'), 'standings rows', 'No standings rows added yet.')}
             </div>
+            </>
+            )}
+
+            {standingsSubview === 'tables' && (
+              <StandingsTablesManager
+                standingsTables={standingsTables}
+                standingsTablesStatus={standingsTablesStatus}
+                setStandingsTables={setStandingsTables}
+                API_BASE={API_BASE}
+                getAuthHeaders={adminAuthHeaders}
+                onRetryData={onRetryData}
+                onAuthChange={onAuthChange}
+              />
+            )}
           </div>
         )}
 
