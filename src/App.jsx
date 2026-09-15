@@ -30,9 +30,7 @@ export default function App() {
       {/* Top Header Strip */}
       <Navbar /> 
 
-      <Suspense fallback={<RouteLoadingFallback />}>
-        <AppRoutes />
-      </Suspense>
+      <AppRoutes />
 
       {/* Bottom Brand Anchor */}
       <Footer />
@@ -69,25 +67,50 @@ function AppRoutes() {
           path="/"
           element={<PageTransition><News /></PageTransition>}
         />
+
         <Route
           path="/gallery"
-          element={<PageTransition><Gallery /></PageTransition>}
+          element={
+            <PageTransition>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <Gallery />
+              </Suspense>
+            </PageTransition>
+          }
         />
 
         {/* SQUAD ROUTES */}
         <Route
           path="/squad"
-          element={<PageTransition><Players /></PageTransition>}
+          element={
+            <PageTransition>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <Players />
+              </Suspense>
+            </PageTransition>
+          }
         />
         <Route
           path="/squad/:id"
-          element={<PageTransition><PlayerProfile /></PageTransition>}
+          element={
+            <PageTransition>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <PlayerProfile />
+              </Suspense>
+            </PageTransition>
+          }
         />
 
         {/* MATCH CENTRE */}
         <Route
           path="/fixtures"
-          element={<PageTransition><FixturesPage /></PageTransition>}
+          element={
+            <PageTransition>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <FixturesPage />
+              </Suspense>
+            </PageTransition>
+          }
         />
 
         {/* ADMIN PANEL */}
@@ -96,7 +119,13 @@ function AppRoutes() {
         {/* INDIVIDUAL NEWS ARTICLE */}
         <Route
           path="/news/:id"
-          element={<PageTransition><ArticleDetail /></PageTransition>}
+          element={
+            <PageTransition>
+              <Suspense fallback={<RouteLoadingFallback />}>
+                <ArticleDetail />
+              </Suspense>
+            </PageTransition>
+          }
         />
       </Routes>
     </AnimatePresence>
