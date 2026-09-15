@@ -711,6 +711,53 @@ app.post('/api/standings', requireAuth, mutationRateLimit, async (req, res) => {
   }
 });
 
+app.put('/api/standings/:id', requireAuth, mutationRateLimit, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id) || !isPlainObject(req.body)) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  try {
+    const allowedFields = ['name', 'rank', 'p', 'w', 'd', 'l', 'gf', 'ga', 'pts', 'form'];
+
+    if (!hasOnlyAllowedFields(req.body, allowedFields)) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    const updates = trimStringFields(Object.fromEntries(
+      Object.entries(req.body).filter(([key]) => allowedFields.includes(key))
+    ), ['name']);
+
+    if (
+      Object.keys(updates).length === 0 ||
+      ('name' in updates && !isNonEmptyString(updates.name)) ||
+      ('rank' in updates && (!isFiniteNumber(updates.rank) || updates.rank < 1)) ||
+      ['p', 'w', 'd', 'l', 'gf', 'ga', 'pts'].some((field) => (
+        field in updates && (!isFiniteNumber(updates[field]) || updates[field] < 0)
+      )) ||
+      ('form' in updates && (
+        !Array.isArray(updates.form) ||
+        updates.form.some((result) => !['W', 'D', 'L'].includes(result))
+      ))
+    ) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    const updatedStanding = await Standing.findByIdAndUpdate(
+      req.params.id,
+      updates,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedStanding) {
+      return res.status(404).json({ error: 'Team not found' });
+    }
+
+    return res.json(updatedStanding);
+  } catch {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+});
+
 app.delete('/api/standings/:id', requireAuth, mutationRateLimit, async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(400).json({ error: 'Invalid request' });
