@@ -795,6 +795,11 @@
   gap: var(--junda-space-4);
 }
 
+.public-match-centre__standings-list {
+  display: grid;
+  gap: var(--junda-space-6);
+}
+
 .public-match-centre__match-card {
   display: grid;
   grid-template-columns: minmax(150px, 0.7fr) minmax(260px, 1.5fr) minmax(150px, 0.8fr);

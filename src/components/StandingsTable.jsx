@@ -3,6 +3,8 @@ export default function StandingsTable({
   isLoading = false,
   error = null,
   onRetry,
+  category = 'Official standings - Group D campaign',
+  league = 'FKF Mombasa County League',
   headingId,
 }) {
   if (isLoading) {
@@ -38,8 +40,8 @@ export default function StandingsTable({
     <div className="public-match-centre__table-shell" aria-labelledby={headingId}>
       <div className="public-match-centre__table-header">
         <div>
-          <h3>FKF Mombasa County League</h3>
-          <p>Official standings - Group D campaign</p>
+          <h3 id={headingId}>{league}</h3>
+          <p>{category}</p>
         </div>
         <span className="public-match-centre__table-status">Current table</span>
       </div>

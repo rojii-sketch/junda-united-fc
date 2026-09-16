@@ -5,13 +5,12 @@ import { fetchJson } from '../api';
 
 export default function FixturesPage() {
   const [fixtures, setFixtures] = React.useState([]);
-  const [standings, setStandings] = React.useState([]);
+  const [standingsTables, setStandingsTables] = React.useState([]);
   const [fixturesStatus, setFixturesStatus] = React.useState('loading');
-  const [standingsStatus, setStandingsStatus] = React.useState('loading');
+  const [standingsTablesStatus, setStandingsTablesStatus] = React.useState('loading');
   const [fixturesError, setFixturesError] = React.useState(null);
-  const [standingsError, setStandingsError] = React.useState(null);
   const [fixturesRetryCount, setFixturesRetryCount] = React.useState(0);
-  const [standingsRetryCount, setStandingsRetryCount] = React.useState(0);
+  const [standingsTablesRetryCount, setStandingsTablesRetryCount] = React.useState(0);
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -37,23 +36,21 @@ export default function FixturesPage() {
   React.useEffect(() => {
     const controller = new AbortController();
 
-    setStandingsStatus('loading');
-    setStandingsError(null);
+    setStandingsTablesStatus('loading');
 
-    fetchJson('/standings', controller.signal)
-      .then(standingsData => {
-        setStandings(standingsData);
-        setStandingsStatus('success');
+    fetchJson('/standings-tables', controller.signal)
+      .then(standingsTablesData => {
+        setStandingsTables(standingsTablesData);
+        setStandingsTablesStatus('success');
       })
       .catch(error => {
         if (error.name === 'AbortError') return;
-        console.error('Error retrieving standings:', error);
-        setStandingsError(error);
-        setStandingsStatus('error');
+        console.error('Error retrieving standings tables:', error);
+        setStandingsTablesStatus('error');
       });
 
     return () => controller.abort();
-  }, [standingsRetryCount]);
+  }, [standingsTablesRetryCount]);
 
   const upcomingMatches = fixtures.filter(match => match.status === 'Upcoming' || !match.status);
   const completedMatches = fixtures.filter(match => match.status === 'Completed');
@@ -63,7 +60,7 @@ export default function FixturesPage() {
     : [];
 
   const retryFixtures = () => setFixturesRetryCount(count => count + 1);
-  const retryStandings = () => setStandingsRetryCount(count => count + 1);
+  const retryStandingsTables = () => setStandingsTablesRetryCount(count => count + 1);
 
   return (
     <div className="public-ui public-match-centre">
@@ -139,17 +136,41 @@ export default function FixturesPage() {
           <SectionHeading id="league-standings-heading" accent="blue">
             League standings
           </SectionHeading>
-          <StandingsTable
-            standings={standings}
-            isLoading={standingsStatus === 'loading'}
-            error={standingsError}
-            onRetry={retryStandings}
-            headingId="league-standings-heading"
-          />
+          {standingsTablesStatus === 'loading' && (
+            <SectionStatus message="Loading official league standings from the cloud..." />
+          )}
+          {standingsTablesStatus === 'error' && (
+            <SectionStatus
+              message="Unable to load official league standings."
+              onRetry={retryStandingsTables}
+              tone="error"
+            />
+          )}
+          {standingsTablesStatus === 'success' && standingsTables.length === 0 && (
+            <EmptyState message="No standings tables available yet." />
+          )}
+          {standingsTablesStatus === 'success' && standingsTables.length > 0 && (
+            <div className="public-match-centre__standings-list">
+              {standingsTables.map(table => (
+                <StandingsTable
+                  key={table._id}
+                  standings={table.teams}
+                  category={table.category}
+                  league={table.league}
+                  headingId={getStandingsHeadingId(table)}
+                />
+              ))}
+            </div>
+          )}
         </section>
       </main>
     </div>
   );
+}
+
+function getStandingsHeadingId(table) {
+  const base = table.slug || table._id || 'table';
+  return `standings-table-${base}`;
 }
 
 function getNextFixture(matches) {
