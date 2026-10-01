@@ -1,8 +1,14 @@
 // src/components/admin/StandingsTablesManager.jsx
 import { useState } from 'react';
+import { rankTable as rankStandingsTeams } from '../../utils/standingsRanking.js';
+
+// JUNDA-STANDINGS-RANK-001: sporting position is derived (PTS → GD → GF).
+// The admin edits statistics only; `rank` is compatibility-only and is no
+// longer sent as a positioning input. Local ordering always uses the shared
+// ranking utility, never stored rank.
 
 const EMPTY_TABLE_FORM = { category: '', league: '', slug: '', displayOrder: 0 };
-const EMPTY_TEAM_FORM = { rank: 1, name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W' };
+const EMPTY_TEAM_FORM = { name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W' };
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -11,7 +17,6 @@ const parseFormInput = (value) => (
 );
 
 const normalizeTeamPayload = (form) => ({
-  rank: Number(form.rank),
   name: form.name,
   p: Number(form.p) || 0,
   w: Number(form.w) || 0,
@@ -33,13 +38,34 @@ const upsertTeamInTable = (tables, tableId, savedTeam) => {
   return tables.map(table => {
     if (table._id !== tableId) return table;
     const exists = table.teams.some(team => team._id === savedTeam._id);
-    const teams = (exists
+    const teams = rankStandingsTeams(exists
       ? table.teams.map(team => team._id === savedTeam._id ? savedTeam : team)
       : [...table.teams, savedTeam]
-    ).sort((a, b) => a.rank - b.rank);
+    );
     return { ...table, teams };
   });
 };
+
+// Refetch a single table after mutation so the admin list reflects the
+// canonical derived order (one edit can move several teams). Returns true
+// on success; callers fall back to upsertTeamInTable otherwise.
+const refreshTableFromApi = async (API_BASE, getAuthHeaders, setStandingsTables, tableId) => {
+  try {
+    const res = await fetch(`${API_BASE}/standings-tables/${tableId}`, {
+      headers: getAuthHeaders(true)
+    });
+    if (!res.ok) return false;
+    const freshTable = await res.json();
+    setStandingsTables(tables => tables.map(table => table._id === tableId ? freshTable : table));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const savedTeamWarnings = (savedTeam) => (
+  Array.isArray(savedTeam?.warnings) ? savedTeam.warnings.filter(w => typeof w === 'string' && w) : []
+);
 
 const removeTableFromList = (tables, tableId) => tables.filter(t => t._id !== tableId);
 
@@ -95,7 +121,6 @@ export default function StandingsTablesManager({
     const stats = ['p', 'w', 'd', 'l', 'gf', 'ga', 'pts'];
     const fields = [
       { ok: Boolean(form.name && form.name.trim()), message: 'Team name is required.' },
-      { ok: Number.isInteger(Number(form.rank)) && Number(form.rank) >= 1, message: 'Rank must be an integer of at least 1.' },
       ...stats.map(stat => ({
         ok: Number.isInteger(Number(form[stat])) && Number(form[stat]) >= 0,
         message: `${stat.toUpperCase()} must be a non-negative integer.`
@@ -278,9 +303,13 @@ export default function StandingsTablesManager({
         return alert(message);
       }
       const savedTeam = await res.json();
-      setStandingsTables(tables => upsertTeamInTable(tables, tableId, savedTeam));
+      const warnings = savedTeamWarnings(savedTeam);
+      const refreshed = await refreshTableFromApi(API_BASE, getAuthHeaders, setStandingsTables, tableId);
+      if (!refreshed) {
+        setStandingsTables(tables => upsertTeamInTable(tables, tableId, savedTeam));
+      }
       setTeamForm({ ...EMPTY_TEAM_FORM });
-      showFeedback('success', 'Team saved.');
+      showFeedback('success', warnings.length > 0 ? `Team saved. Note: ${warnings.join('; ')}` : 'Team saved.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       console.error(err);
@@ -293,7 +322,6 @@ export default function StandingsTablesManager({
   const startEditTeam = (team) => {
     setEditingTeam(team);
     setTeamForm({
-      rank: team.rank,
       name: team.name,
       p: team.p ?? 0,
       w: team.w ?? 0,
@@ -338,10 +366,14 @@ export default function StandingsTablesManager({
         return alert(message);
       }
       const savedTeam = await res.json();
-      setStandingsTables(tables => upsertTeamInTable(tables, tableId, savedTeam));
+      const warnings = savedTeamWarnings(savedTeam);
+      const refreshed = await refreshTableFromApi(API_BASE, getAuthHeaders, setStandingsTables, tableId);
+      if (!refreshed) {
+        setStandingsTables(tables => upsertTeamInTable(tables, tableId, savedTeam));
+      }
       setEditingTeam(null);
       setTeamForm({ ...EMPTY_TEAM_FORM });
-      showFeedback('success', 'Team updated.');
+      showFeedback('success', warnings.length > 0 ? `Team updated. Note: ${warnings.join('; ')}` : 'Team updated.');
     } catch (err) {
       console.error(err);
       alert('Network error communicating with the server.');
@@ -447,8 +479,12 @@ export default function StandingsTablesManager({
           <h3 style={{ marginBottom: '0.5rem' }}>Selected: {selectedTable.category} — {selectedTable.league}</h3>
           <form onSubmit={isEditingTeam ? handleUpdateTeam : handleAddTeam} className={`admin-form${isEditingTeam ? ' admin-form--editing' : ''}`}>
             <h3>{isEditingTeam ? "📝 Edit Team" : "➕ Add / Upsert Team"}</h3>
+            {isEditingTeam && editingTeam?.position != null && (
+              <p className="subtext" style={{ marginTop: 0, color: '#475569' }}>
+                Current derived position: Pos {editingTeam.position} (PTS → GD → GF; not manually editable)
+              </p>
+            )}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-              <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="st-team-rank">Pos (Rank)</label><input id="st-team-rank" type="number" min="1" value={teamForm.rank} onChange={e => setTeamForm({ ...teamForm, rank: e.target.value })} /></div>
               <div className="form-group" style={{ flex: '2 1 200px' }}><label htmlFor="st-team-name">Team Name</label><input id="st-team-name" type="text" placeholder="e.g. Junda United FC" value={teamForm.name} onChange={e => setTeamForm({ ...teamForm, name: e.target.value })} required /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '0.5rem' }}>
@@ -477,7 +513,7 @@ export default function StandingsTablesManager({
             {(selectedTable.teams || []).map(team => (
               <div className="admin-list__row" key={team._id} style={{ alignItems: 'center', flexWrap: 'wrap' }}>
                 <div className="admin-list__info">
-                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.rank}. {team.name}</strong>
+                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.position ?? team.rank}. {team.name}</strong>
                   <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>
                     P {team.p} • W {team.w} • D {team.d} • L {team.l} • GF {team.gf} • GA {team.ga} • Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span>
                     <span style={{ display: 'inline-flex', gap: '0.25rem', marginLeft: '0.5rem' }}>

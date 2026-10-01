@@ -9,6 +9,21 @@ import Fixture from './models/Fixture.js'
 import cors from 'cors';
 import Standing from './models/Standing.js';
 import StandingsTable from './models/StandingsTable.js';
+import { rankTable as rankStandingsTeams, buildWarnings as buildStandingsWarnings } from './utils/standingsRanking.js';
+
+// JUNDA-STANDINGS-RANK-001: attach the derived sporting position (and
+// warning-only consistency messages) to a single-team mutation response.
+// The position is informational for the affected team only; callers must
+// refetch the table because one edit can move several teams. Stored
+// `rank` is echoed for compatibility and never authoritative.
+const withDerivedPosition = (standingsTable, teamDoc) => {
+  const plain = teamDoc.toObject({ versionKey: false });
+  const ranked = rankStandingsTeams(
+    standingsTable.teams.map((entry) => entry.toObject({ versionKey: false }))
+  );
+  const match = ranked.find((entry) => String(entry._id) === String(plain._id));
+  return { ...plain, position: match ? match.position : undefined, warnings: buildStandingsWarnings(plain) };
+};
 import dotenv from 'dotenv';
 import Admin from './models/Admin.js';
 
@@ -804,6 +819,15 @@ app.get('/api/standings-tables', async (req, res) => {
       .sort({ displayOrder: 1, createdAt: 1 })
       .select('-__v')
       .lean();
+    // JUNDA-STANDINGS-RANK-001: backend is the canonical ranking source.
+    // Derive PTS → GD → GF order + 1,2,2,4 positions before res.json so
+    // the cache shield stores canonical data. Stored `rank` is retained
+    // untouched for compatibility and is never authoritative.
+    for (const standingsTable of standingsTables) {
+      if (Array.isArray(standingsTable.teams)) {
+        standingsTable.teams = rankStandingsTeams(standingsTable.teams);
+      }
+    }
     res.json(standingsTables);
   } catch {
     res.status(500).json({ error: 'Internal server error' });
@@ -848,6 +872,11 @@ app.get('/api/standings-tables/:id', async (req, res) => {
       .lean();
     if (!standingsTable) {
       return res.status(404).json({ error: 'Standings table not found' });
+    }
+    // JUNDA-STANDINGS-RANK-001: canonical derivation, same as the
+    // collection endpoint. Stored `rank` retained for compatibility.
+    if (Array.isArray(standingsTable.teams)) {
+      standingsTable.teams = rankStandingsTeams(standingsTable.teams);
     }
     return res.json(standingsTable);
   } catch {
@@ -918,6 +947,8 @@ app.delete('/api/standings-tables/:id', requireAuth, mutationRateLimit, async (r
 });
 
 app.post('/api/standings-tables/:id/teams', requireAuth, mutationRateLimit, async (req, res) => {
+  // JUNDA-STANDINGS-RANK-001: `rank` remains accepted for compatibility
+  // (deprecated) but is never used for sporting ordering.
   const allowedFields = ['rank', 'name', 'p', 'w', 'd', 'l', 'gf', 'ga', 'pts', 'form'];
 
   if (
@@ -925,7 +956,7 @@ app.post('/api/standings-tables/:id/teams', requireAuth, mutationRateLimit, asyn
     !isPlainObject(req.body) ||
     !hasOnlyAllowedFields(req.body, allowedFields) ||
     !isNonEmptyString(req.body.name) ||
-    !isPositiveInteger(req.body.rank) ||
+    (req.body.rank !== undefined && !isPositiveInteger(req.body.rank)) ||
     !['p', 'w', 'd', 'l', 'gf', 'ga', 'pts'].every((field) => (
       req.body[field] === undefined || isNonNegativeInteger(req.body[field])
     )) ||
@@ -935,6 +966,9 @@ app.post('/api/standings-tables/:id/teams', requireAuth, mutationRateLimit, asyn
   }
 
   const team = trimStringFields(req.body, ['name']);
+  // JUNDA-STANDINGS-RANK-001: `rank` is compatibility-only and never affects
+  // order. Preserve the existing stored rank when rank is omitted on a
+  // name-match update; default it only for genuinely new teams (schema requires it).
 
   try {
     const standingsTable = await StandingsTable.findById(req.params.id);
@@ -951,19 +985,24 @@ app.post('/api/standings-tables/:id/teams', requireAuth, mutationRateLimit, asyn
       const targetTeam = standingsTable.teams[existingIndex];
       targetTeam.set(team);
       await standingsTable.save();
-      return res.json(targetTeam.toObject({ versionKey: false }));
+      return res.json(withDerivedPosition(standingsTable, targetTeam));
     }
 
+    // Default rank only for new documents so a rank-less upsert never
+    // overwrites an existing team's stored compatibility rank.
+    if (team.rank === undefined) team.rank = 1;
     standingsTable.teams.push(team);
     await standingsTable.save();
     const createdTeam = standingsTable.teams[standingsTable.teams.length - 1];
-    return res.status(201).json(createdTeam.toObject({ versionKey: false }));
+    return res.status(201).json(withDerivedPosition(standingsTable, createdTeam));
   } catch {
     return res.status(400).json({ error: 'Invalid request' });
   }
 });
 
 app.put('/api/standings-tables/:id/teams/:teamId', requireAuth, mutationRateLimit, async (req, res) => {
+  // JUNDA-STANDINGS-RANK-001: `rank` remains accepted for compatibility
+  // (deprecated) but is never used for sporting ordering.
   const allowedFields = ['rank', 'name', 'p', 'w', 'd', 'l', 'gf', 'ga', 'pts', 'form'];
 
   if (
@@ -1002,7 +1041,7 @@ app.put('/api/standings-tables/:id/teams/:teamId', requireAuth, mutationRateLimi
 
     targetTeam.set(team);
     await standingsTable.save();
-    return res.json(targetTeam.toObject({ versionKey: false }));
+    return res.json(withDerivedPosition(standingsTable, targetTeam));
   } catch {
     return res.status(400).json({ error: 'Invalid request' });
   }

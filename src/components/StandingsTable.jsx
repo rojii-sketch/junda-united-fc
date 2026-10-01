@@ -1,3 +1,9 @@
+import { rankTable as rankStandingsTeams } from '../utils/standingsRanking.js';
+
+// JUNDA-STANDINGS-RANK-001: sporting position is derived (PTS → GD → GF,
+// 1,2,2,4). The backend is canonical; this component defensively derives
+// the same order so old/cached payloads without `position` still render
+// correctly. Stored `rank` is compatibility-only and never displayed.
 export default function StandingsTable({
   standings = [],
   isLoading = false,
@@ -36,6 +42,8 @@ export default function StandingsTable({
     );
   }
 
+  const rankedStandings = rankStandingsTeams(standings);
+
   return (
     <div className="public-match-centre__table-shell" aria-labelledby={headingId}>
       <div className="public-match-centre__table-header">
@@ -64,14 +72,15 @@ export default function StandingsTable({
             </tr>
           </thead>
           <tbody>
-            {standings.map(team => {
+            {rankedStandings.map((team, index) => {
               const teamName = team.name || 'Unknown Team';
               const isJunda = teamName.toLowerCase().includes('junda united');
               const goalDifference = (team.gf || 0) - (team.ga || 0);
+              const rowKey = team._id || `row-${index}`;
 
               return (
-                <tr className={isJunda ? 'public-match-centre__table-row--junda' : ''} key={team._id || team.rank}>
-                  <td className={team.rank <= 2 ? 'public-match-centre__position--top' : ''}>{team.rank}</td>
+                <tr className={isJunda ? 'public-match-centre__table-row--junda' : ''} key={rowKey}>
+                  <td className={team.position <= 2 ? 'public-match-centre__position--top' : ''}>{team.position}</td>
                   <th scope="row">
                     <span className="public-match-centre__club-name">
                       {isJunda && <span aria-hidden="true">🛡️</span>}
@@ -88,10 +97,10 @@ export default function StandingsTable({
                   <td className="public-match-centre__points">{team.pts}</td>
                   <td>
                     <div className="public-match-centre__form" aria-label={`Recent form: ${(team.form || []).join(', ') || 'not available'}`}>
-                      {(team.form || []).map((form, index) => (
+                      {(team.form || []).map((form, formIndex) => (
                         <span
                           className={`public-match-centre__form-badge public-match-centre__form-badge--${form.toLowerCase()}`}
-                          key={`${team._id || team.rank}-${form}-${index}`}
+                          key={`${rowKey}-${form}-${formIndex}`}
                         >
                           {form}
                         </span>
