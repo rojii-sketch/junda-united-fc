@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore } from 'react';
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 
@@ -9,22 +9,30 @@ function subscribe(listener) {
   return () => media.removeEventListener('change', listener);
 }
 
-export default function AdminLayout({ children, sectionTitle, sectionDescription, activeTab, onSelectSection, onLogout }) {
+export default function AdminLayout({ theme, children, sectionTitle, sectionDescription, activeTab, onSelectSection, onLogout }) {
   const mobile = useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [navigationCount, setNavigationCount] = useState(0);
   const headingRef = useRef(null);
   const toggleRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const heading = headingRef.current;
+    if (!navigationCount || !heading) return;
+    heading.focus({ preventScroll: true });
+    heading.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [navigationCount]);
 
   function select(section) {
     onSelectSection(section);
     setMobileOpen(false);
-    requestAnimationFrame(() => headingRef.current?.focus());
+    setNavigationCount(count => count + 1);
   }
 
   return (
     <div className={`admin-ui club-admin${collapsed ? ' club-admin--collapsed' : ''}`}
-      onKeyDown={event => {
+      data-admin-theme={theme} onKeyDown={event => {
         if (event.key === 'Escape' && mobile && mobileOpen) {
           setMobileOpen(false);
           toggleRef.current?.focus();
@@ -37,7 +45,7 @@ export default function AdminLayout({ children, sectionTitle, sectionDescription
       <div className="club-admin-nav" hidden={mobile && !mobileOpen}>
         <AdminSidebar id="admin-sidebar" activeTab={activeTab} onSelectSection={select} onLogout={onLogout} />
       </div>
-      <main id="admin-workspace" tabIndex={-1} className="club-admin-workspace">{children}</main>
+      <main id="admin-workspace" tabIndex={-1} className="club-admin-workspace">{children(select)}</main>
     </div>
   );
 }

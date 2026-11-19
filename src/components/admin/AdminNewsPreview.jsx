@@ -12,7 +12,7 @@ export default function AdminNewsPreview({ draft }) {
       {open && (
         <article className="admin-news-preview__article" aria-label="Article draft preview">
           <NewsDate value={draft.date} />
-          <h4>{draft.title.trim() || 'Untitled article'}</h4>
+          <h3>{draft.title.trim() || 'Untitled article'}</h3>
           <NewsImage url={draft.imageUrl} alt="Cover image preview" />
           {newsParagraphs(draft.content).map((paragraph, index) => <p key={index}>{paragraph}</p>)}
         </article>

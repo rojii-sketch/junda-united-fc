@@ -14,14 +14,17 @@ export default function AdminOverview({ collections, fixtures, fixtureStatus, on
 
   return (
     <div className="club-admin-overview">
-      <div className="club-admin-totals">
-        {items.map(([key, label, Icon]) => (
-          <button type="button" key={key} onClick={() => onSelect(key)}>
-            <Icon size={22} aria-hidden="true" /><ArrowUpRight size={17} aria-hidden="true" />
-            <strong>{collections[key] ?? '—'}</strong><span>{label}</span>
-          </button>
-        ))}
-      </div>
+      <section aria-labelledby="admin-totals-title">
+        <h2 id="admin-totals-title" className="club-admin-overview__label">Club records</h2>
+        <div className="club-admin-totals">
+          {items.map(([key, label, Icon]) => (
+            <button type="button" key={key} onClick={() => onSelect(key)}>
+              <span className="club-admin-totals__icon"><Icon size={20} aria-hidden="true" /></span><ArrowUpRight size={17} aria-hidden="true" />
+              <strong>{collections[key] ?? '—'}</strong><span>{label}</span>
+            </button>
+          ))}
+        </div>
+      </section>
       <div className="club-admin-matches">
         {[[upcoming, 'Upcoming fixtures'], [completed, 'Recent results']].map(([matches, title]) => (
           <section className="admin-form" key={title}>

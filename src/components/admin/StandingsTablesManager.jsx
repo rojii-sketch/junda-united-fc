@@ -401,7 +401,7 @@ export default function StandingsTablesManager({
       <DeleteDialog request={deletion} onCancel={() => setDeletion(null)} />
       <Feedback message={feedback} />
       <form onSubmit={isEditingTable ? handleUpdateTable : handleCreateTable} className={`admin-form${isEditingTable ? ' admin-form--editing' : ''}`}>
-        <h3>{isEditingTable ? "Edit standings table" : "Create standings table"}</h3>
+        <h2>{isEditingTable ? "Edit standings table" : "Create standings table"}</h2>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
           <div className="form-group" style={{ flex: '1 1 200px' }}><label htmlFor="st-category">Category</label><input id="st-category" required type="text" placeholder="e.g. Senior Team" value={tableForm.category} onChange={e => setTableForm({ ...tableForm, category: e.target.value })} /></div>
           <div className="form-group" style={{ flex: '1 1 200px' }}><label htmlFor="st-league">League</label><input id="st-league" required type="text" placeholder="e.g. FKF Mombasa County League" value={tableForm.league} onChange={e => setTableForm({ ...tableForm, league: e.target.value })} /></div>
@@ -419,7 +419,7 @@ export default function StandingsTablesManager({
       </form>
 
       <div className="admin-list">
-        <h3 className="admin-list__header" tabIndex={-1}>Existing Standings Tables ({standingsTables.length})</h3>
+        <h2 className="admin-list__header" tabIndex={-1}>Existing Standings Tables ({standingsTables.length})</h2>
         {standingsTablesStatus !== 'success' && standingsTablesStatus !== 'error' && (
           <div className="admin-list__state" role="status"><span className="btn-spinner" aria-hidden="true" />Loading standings tables...</div>
         )}
@@ -430,10 +430,10 @@ export default function StandingsTablesManager({
           <div className="admin-list__state">No standings tables yet. Create one above.</div>
         )}
         {standingsTables.map(item => (
-          <div key={item._id} className="admin-list__row" style={selectedTableId === item._id ? { borderLeft: '4px solid #2b6cb0' } : undefined}>
+          <div key={item._id} className="admin-list__row" style={selectedTableId === item._id ? { borderLeft: '4px solid var(--admin-focus)' } : undefined}>
             <div className="admin-list__info" style={{ cursor: 'pointer' }} onClick={() => handleSelectTable(item._id)}>
-              <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.category}</strong>
-              <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.league} • Display order: {item.displayOrder} • {item.teams?.length || 0} teams</p>
+              <strong style={{ fontSize: '1.1rem', color: 'var(--admin-ink)' }}>{item.category}</strong>
+              <p className="subtext" style={{ marginTop: '0.35rem', color: 'var(--admin-muted)' }}>{item.league} • Display order: {item.displayOrder} • {item.teams?.length || 0} teams</p>
             </div>
             <div className="admin-row-actions">
               <button type="button" className="tab-btn tab-btn--compact" onClick={() => handleSelectTable(item._id)}>{selectedTableId === item._id ? 'Selected' : 'Select'}</button>
@@ -448,12 +448,12 @@ export default function StandingsTablesManager({
       </div>
 
       {selectedTable ? (
-        <div className="admin-panel">
-          <h3 style={{ marginBottom: '0.5rem' }}>Selected: {selectedTable.category} — {selectedTable.league}</h3>
+        <div className="admin-panel admin-panel--split">
+          <h2 className="admin-panel__heading">Selected: {selectedTable.category} — {selectedTable.league}</h2>
           <form onSubmit={isEditingTeam ? handleUpdateTeam : handleAddTeam} className={`admin-form${isEditingTeam ? ' admin-form--editing' : ''}`}>
             <h3>{isEditingTeam ? "Edit team" : "Add or update team"}</h3>
             {isEditingTeam && editingTeam?.position != null && (
-              <p className="subtext" style={{ marginTop: 0, color: '#475569' }}>
+              <p className="subtext" style={{ marginTop: 0, color: 'var(--admin-muted)' }}>
                 Current derived position: Pos {editingTeam.position} (PTS → GD → GF; not manually editable)
               </p>
             )}
@@ -486,9 +486,9 @@ export default function StandingsTablesManager({
             {(selectedTable.teams || []).map(team => (
               <div className="admin-list__row" key={team._id} style={{ alignItems: 'center', flexWrap: 'wrap' }}>
                 <div className="admin-list__info">
-                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.position ?? "—"}. {team.name}</strong>
-                  <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>
-                    P {team.p} • W {team.w} • D {team.d} • L {team.l} • GF {team.gf} • GA {team.ga} • Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span>
+                  <strong style={{ fontSize: '1.1rem', color: 'var(--admin-ink)' }}>Pos {team.position ?? "—"}. {team.name}</strong>
+                  <p className="subtext" style={{ marginTop: '0.35rem', color: 'var(--admin-muted)' }}>
+                    P {team.p} • W {team.w} • D {team.d} • L {team.l} • GF {team.gf} • GA {team.ga} • Points: <span style={{ fontWeight: 'bold', color: 'var(--admin-success)' }}>{team.pts}</span>
                     <span style={{ display: 'inline-flex', gap: '0.25rem', marginLeft: '0.5rem' }}>
                       {(team.form || []).map(result => <span className="role-tag" key={`${team._id}-${result}`}>{result}</span>)}
                     </span>

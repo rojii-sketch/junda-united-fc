@@ -4,6 +4,8 @@ import { afterRecordDeletion } from '../components/ui/deleteFocus';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import RecordSearch from '../components/admin/RecordSearch';
+import AdminAppearance from '../components/admin/AdminAppearance';
+import useAdminTheme from '../components/admin/useAdminTheme';
 import AdminOverview from '../components/admin/AdminOverview';
 import AdminGalleryPreview from '../components/admin/AdminGalleryPreview';
 import AdminNewsPreview from '../components/admin/AdminNewsPreview';
@@ -31,6 +33,7 @@ export default function Admin({
   onAuthChange,
   sessionNotice
 }) {
+  const { theme, preference, choosePreference } = useAdminTheme();
   const [activeTab, setActiveTab] = useState('overview');
   const [loginMessage, setLoginMessage] = useState(sessionNotice);
   const [message, setMessage] = useState(null);
@@ -422,7 +425,7 @@ export default function Admin({
 
   if (!adminToken) {
     return (
-      <main className="club-admin-login">
+      <main className="admin-ui club-admin-login" data-admin-theme={theme}>
         <SEO title="Club administration" description="Junda United FC administration sign-in." />
         <form onSubmit={handleLogin} className="admin-form">
           <Link to="/" className="club-admin-login__back">← Return to club website</Link>
@@ -454,6 +457,7 @@ export default function Admin({
     fixtures: { title: 'Manage Fixtures', description: 'Log and track match schedules and results.' },
     standings: { title: 'Manage Standings', description: 'Manage competition tables and enter team statistics.' },
     squad: { title: 'Manage Squad', description: 'Handle player registrations, staff records and team roster.' },
+    appearance: { title: 'Appearance settings', description: 'Choose how the club workspace looks on this device.' },
     gallery: { title: 'Manage Gallery', description: 'Upload and organize media assets for club communications.' }
   };
 
@@ -507,20 +511,15 @@ export default function Admin({
     .filter(([, status]) => status === 'error')
     .map(([collection]) => collection);
 
-  return (
-    <AdminLayout
-      sectionTitle={sectionTitle}
-      sectionDescription={sectionDescription}
-      activeTab={activeTab}
-      onSelectSection={handleSelectSection}
-      onLogout={handleLogout}
-    >
+  function renderWorkspace(selectSection) {
+    return (
       <div className="club-admin-content">
         <SEO title={sectionTitle} description={sectionDescription} />
         <DeleteDialog request={deletion} onCancel={() => setDeletion(null)} />
         <Feedback message={message} />
+        {activeTab === 'appearance' && <AdminAppearance preference={preference} choosePreference={choosePreference} />}
         {activeTab === 'overview' && (
-          <AdminOverview onSelect={handleSelectSection} fixtures={fixtures} fixtureStatus={statusOf('fixtures')}
+          <AdminOverview onSelect={selectSection} fixtures={fixtures} fixtureStatus={statusOf('fixtures')}
             collections={Object.fromEntries([
               ['news', 'news', news], ['fixtures', 'fixtures', fixtures], ['standings', 'standingsTables', standingsTables],
               ['squad', 'players', players], ['gallery', 'gallery', gallery]
@@ -553,9 +552,9 @@ export default function Admin({
 
         {/* --- NEWS SECTION --- */}
         {activeTab === 'news' && (
-          <div className="admin-panel admin-panel--stacked">
+          <div className="admin-panel admin-panel--split">
             <form onSubmit={handleAddNews} className={`admin-form${editingNewsId ? ' admin-form--editing' : ''}`}>
-              <h3>{editingNewsId ? "Edit article" : "Create article"}</h3>
+              <h2>{editingNewsId ? "Edit article" : "Create article"}</h2>
               <div className="form-group"><label htmlFor="admin-news-title">Article Title</label><input id="admin-news-title" required type="text" aria-describedby="admin-news-title-hint" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} /><small id="admin-news-title-hint">Write a clear headline that tells readers what happened.</small></div>
               <div className="form-group"><label htmlFor="admin-news-image">Cover image (optional)</label><input id="admin-news-image" aria-describedby="admin-news-image-hint" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={isUploading} onChange={e => handleFileUpload(e, 'news')} /><small id="admin-news-image-hint">Use a JPG, PNG, WebP or GIF up to 10 MB. A landscape photo works well in the news grid.</small></div>
               <div className="form-group"><label htmlFor="admin-news-date">Publication date (optional)</label><input id="admin-news-date" aria-describedby="admin-news-date-hint" type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} /><small id="admin-news-date-hint">{editingNewsId ? 'Choose a date to change the saved publication date.' : 'A new article uses the current date if left blank.'}</small></div>
@@ -568,14 +567,14 @@ export default function Admin({
             </form>
 
             <div className="admin-list">
-              <h3 className="admin-list__header" tabIndex={-1}>Current Articles ({news.length})</h3>
+              <h2 className="admin-list__header" tabIndex={-1}>Current Articles ({news.length})</h2>
               {news.length > 0 && <RecordSearch id="news-search" label="Search articles" query={newsQuery} onChange={setNewsQuery} />}
               {news.length > 0 && shownNews.length === 0 && <p className="admin-list__state" role="status">No articles match your search.</p>}
               {shownNews.map(item => (
                 <div key={item._id} className="admin-list__row">
                   <div className="admin-list__info">
-                    <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.title}</strong>
-                    <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.date}</p>
+                    <strong style={{ fontSize: '1.1rem', color: 'var(--admin-ink)' }}>{item.title}</strong>
+                    <p className="subtext" style={{ marginTop: '0.35rem', color: 'var(--admin-muted)' }}>{item.date}</p>
                   </div>
                   <div className="admin-row-actions">
                     <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditNews(item)}><Pencil size={16} aria-hidden="true" /> Edit</button>
@@ -590,19 +589,19 @@ export default function Admin({
 
         {/* --- FIXTURES SECTION --- */}
         {activeTab === 'fixtures' && (
-          <div className="admin-panel admin-panel--stacked">
+          <div className="admin-panel admin-panel--split">
             <form onSubmit={handleAddFixture} className="admin-form">
-              <h3>Add a match</h3>
+              <h2>Add a match</h2>
               <div className="form-group"><label htmlFor="admin-fixture-opponent">Opponent Team Name</label><input id="admin-fixture-opponent" required type="text" placeholder="e.g. Black Dragon FC" value={fixtureForm.opponent} onChange={e => setFixtureForm({...fixtureForm, opponent: e.target.value})} /></div>
               <div className="form-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                 <div style={{ flex: '1 1 150px' }}><label htmlFor="admin-fixture-date">Match Date</label><input id="admin-fixture-date" type="date" required value={fixtureForm.matchDate} onChange={e => setFixtureForm({...fixtureForm, matchDate: e.target.value})} /></div>
                 <div style={{ flex: '1 1 150px' }}><label htmlFor="admin-fixture-time">Kickoff time (EAT)</label><input id="admin-fixture-time" type="time" required value={fixtureForm.kickoffTime} onChange={e => setFixtureForm({...fixtureForm, kickoffTime: e.target.value})} /></div>
               </div>
               <div className="form-group"><label htmlFor="admin-fixture-venue">Stadium Venue</label><input id="admin-fixture-venue" type="text" value={fixtureForm.venue} onChange={e => setFixtureForm({...fixtureForm, venue: e.target.value})} /></div>
-              <div className="form-group" style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px' }}><label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}><input type="checkbox" checked={fixtureForm.isHomeMatch} onChange={e => setFixtureForm({...fixtureForm, isHomeMatch: e.target.checked})} />Home match</label></div>
+              <div className="form-group" style={{ background: 'var(--admin-inset)', padding: '0.5rem', borderRadius: '6px' }}><label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}><input type="checkbox" checked={fixtureForm.isHomeMatch} onChange={e => setFixtureForm({...fixtureForm, isHomeMatch: e.target.checked})} />Home match</label></div>
               <div className="form-group"><label htmlFor="admin-fixture-status">Match Progress Status</label><select id="admin-fixture-status" value={fixtureForm.status} onChange={e => setFixtureForm({...fixtureForm, status: e.target.value})}><option value="Upcoming">Upcoming</option><option value="Completed">Completed</option></select></div>
               {fixtureForm.status === 'Completed' && (
-                <div className="form-group" style={{ display: 'flex', gap: '1rem', background: '#f0fdf4', padding: '1rem', borderRadius: '8px' }}>
+                <div className="form-group" style={{ display: 'flex', gap: '1rem', background: 'var(--admin-success-bg)', padding: '1rem', borderRadius: '8px' }}>
                   <div><label htmlFor="admin-fixture-junda">Junda Score</label><input id="admin-fixture-junda" type="number" min="0" step="any" value={fixtureForm.jundaScore} onChange={e => setFixtureForm({...fixtureForm, jundaScore: e.target.value})} style={{ width: '70px' }} /></div>
                   <div style={{ fontWeight: 'bold', alignSelf: 'center', marginTop: '1rem' }}>VS</div>
                   <div><label htmlFor="admin-fixture-opp-score">Opponent Score</label><input id="admin-fixture-opp-score" type="number" min="0" step="any" value={fixtureForm.opponentScore} onChange={e => setFixtureForm({...fixtureForm, opponentScore: e.target.value})} style={{ width: '70px' }} /></div>
@@ -612,12 +611,12 @@ export default function Admin({
             </form>
 
             <div className="admin-list">
-              <h3 className="admin-list__header" tabIndex={-1}>Active Match Logs ({fixtures?.length || 0})</h3>
+              <h2 className="admin-list__header" tabIndex={-1}>Active Match Logs ({fixtures?.length || 0})</h2>
               {(fixtures || []).map(item => (
                 <div key={item._id} className="admin-list__row">
                   <div className="admin-list__info">
-                    <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Junda United vs {item.opponent}</strong>
-                    <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.matchDate} • {item.status === 'Completed' ? `Score: ${item.jundaScore}-${item.opponentScore}` : 'Upcoming'}</p>
+                    <strong style={{ fontSize: '1.1rem', color: 'var(--admin-ink)' }}>Junda United vs {item.opponent}</strong>
+                    <p className="subtext" style={{ marginTop: '0.35rem', color: 'var(--admin-muted)' }}>{item.matchDate} • {item.status === 'Completed' ? `Score: ${item.jundaScore}-${item.opponentScore}` : 'Upcoming'}</p>
                   </div>
                   <button type="button" className="delete-btn" disabled={isDeleting('fixtures', item._id)} onClick={event => confirmDelete(item, 'fixtures', event.currentTarget)}>{asyncButtonContent(isDeleting('fixtures', item._id), "Deleting…", <><Trash2 size={16} aria-hidden="true" /> Delete</>)}</button>
                 </div>
@@ -639,7 +638,7 @@ export default function Admin({
             <>
             <p className="admin-field-note">The legacy table retains stored positions. Standings tables calculate position from points, goal difference and goals scored.</p>
             <form onSubmit={handleStandingSubmit} className={`admin-form${editingStandingId ? ' admin-form--editing' : ''}`}>
-              <h3>{editingStandingId ? "📝 Edit Standings Row" : "📊 Update League Standings Table"}</h3>
+              <h2>{editingStandingId ? "📝 Edit Standings Row" : "📊 Update League Standings Table"}</h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                 <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="admin-stand-rank">Stored position (legacy table)</label><input id="admin-stand-rank" type="number" min="1" value={standingForm.rank} onChange={e => setStandingForm({...standingForm, rank: e.target.value})} /></div>
                 <div className="form-group" style={{ flex: '2 1 200px' }}><label htmlFor="admin-stand-name">Club Name</label><input id="admin-stand-name" type="text" placeholder="e.g. Junda United FC" value={standingForm.name} onChange={e => setStandingForm({...standingForm, name: e.target.value})} required /></div>
@@ -675,12 +674,12 @@ export default function Admin({
             </form>
 
             <div className="admin-list">
-              <h3 className="admin-list__header" tabIndex={-1}>Active League Table Rows ({standings?.length || 0})</h3>
+              <h2 className="admin-list__header" tabIndex={-1}>Active League Table Rows ({standings?.length || 0})</h2>
               {(standings || []).map(team => (
                 <div key={team._id} className="admin-list__row">
                   <div className="admin-list__info">
-                    <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.rank}. {team.name}</strong>
-                    <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span> • Record: P {team.p} W {team.w} D {team.d} L {team.l}</p>
+                    <strong style={{ fontSize: '1.1rem', color: 'var(--admin-ink)' }}>Pos {team.rank}. {team.name}</strong>
+                    <p className="subtext" style={{ marginTop: '0.35rem', color: 'var(--admin-muted)' }}>Points: <span style={{ fontWeight: 'bold', color: 'var(--admin-success)' }}>{team.pts}</span> • Record: P {team.p} W {team.w} D {team.d} L {team.l}</p>
                   </div>
                   <div className="admin-row-actions">
                     <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditStanding(team)}><Pencil size={16} aria-hidden="true" /> Edit</button>
@@ -707,9 +706,9 @@ export default function Admin({
 
         {/* --- SQUAD SECTION --- */}
         {activeTab === 'squad' && (
-          <div className="admin-panel admin-panel--stacked">
+          <div className="admin-panel admin-panel--split">
             <form onSubmit={handleAddPlayer} className={`admin-form${editingPlayerId ? ' admin-form--editing' : ''}`}>
-              <h3>{editingPlayerId ? "📝 Edit Roster Member" : "Add Roster Member"}</h3>
+              <h2>{editingPlayerId ? "📝 Edit Roster Member" : "Add Roster Member"}</h2>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                 <div className="form-group" style={{ flex: '2 1 200px' }}><label htmlFor="admin-squad-name">Full Name</label><input id="admin-squad-name" required type="text" placeholder="e.g. Marcus Vance" value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} /></div>
@@ -762,14 +761,14 @@ export default function Admin({
             </form>
 
             <div className="admin-list">
-              <h3 className="admin-list__header" tabIndex={-1}>Current Roster ({players.length})</h3>
+              <h2 className="admin-list__header" tabIndex={-1}>Current Roster ({players.length})</h2>
               {players.length > 0 && <RecordSearch id="squad-search" label="Search squad members" query={squadQuery} onChange={setSquadQuery} />}
               {players.length > 0 && shownSquad.length === 0 && <p className="admin-list__state" role="status">No squad members match your search.</p>}
               {shownSquad.map(item => (
                 <div key={item._id} className="admin-list__row">
                   <div className="admin-list__info">
-                    <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.name}</strong>
-                    <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>
+                    <strong style={{ fontSize: '1.1rem', color: 'var(--admin-ink)' }}>{item.name}</strong>
+                    <p className="subtext" style={{ marginTop: '0.35rem', color: 'var(--admin-muted)' }}>
                       {item.position} • <span className="role-tag">{item.role === 'coach' ? 'Staff' : item.squadCategory}</span>
                     </p>
                   </div>
@@ -786,9 +785,9 @@ export default function Admin({
 
         {/* --- GALLERY SECTION --- */}
         {activeTab === 'gallery' && (
-          <div className="admin-panel admin-panel--stacked">
+          <div className="admin-panel admin-panel--split">
             <form onSubmit={handleAddGallery} className="admin-form">
-              <h3>Add gallery media</h3>
+              <h2>Add gallery media</h2>
               <div className="form-group"><label htmlFor="admin-gallery-file"><Upload size={16} aria-hidden="true" /> Upload an image</label><input id="admin-gallery-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={isUploading || galleryForm.type === 'video'} onChange={e => handleFileUpload(e, 'gallery')} /></div>
               <div className="form-group"><label htmlFor="admin-gallery-caption">Description / Caption</label><input id="admin-gallery-caption" type="text" placeholder="Highlights" value={galleryForm.caption} onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})} /></div>
               <div className="form-group"><label htmlFor="admin-gallery-type">Media Type</label><select id="admin-gallery-type" value={galleryForm.type} disabled={isUploading} onChange={e => {
@@ -807,11 +806,11 @@ export default function Admin({
             </form>
 
             <div className="admin-list">
-              <h3 className="admin-list__header" tabIndex={-1}>Current Assets ({gallery.length})</h3>
+              <h2 className="admin-list__header" tabIndex={-1}>Current Assets ({gallery.length})</h2>
               {gallery.map(item => (
                 <div key={item._id} className="admin-list__row">
                   <div className="admin-list__info">
-                    <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.caption || "Untitled"}</strong>
+                    <strong style={{ fontSize: '1.1rem', color: 'var(--admin-ink)' }}>{item.caption || "Untitled"}</strong>
                     <p className="subtext type-tag" style={{ marginTop: '0.35rem', display: 'inline-block' }}>{item.type}</p>
                   </div>
                   <button type="button" className="delete-btn" disabled={isDeleting('gallery', item._id)} onClick={event => confirmDelete(item, 'gallery', event.currentTarget)}>{asyncButtonContent(isDeleting('gallery', item._id), "Deleting…", <><Trash2 size={16} aria-hidden="true" /> Delete</>)}</button>
@@ -822,6 +821,19 @@ export default function Admin({
           </div>
         )}
       </div>
+    );
+  }
+
+  return (
+    <AdminLayout
+      theme={theme}
+      sectionTitle={sectionTitle}
+      sectionDescription={sectionDescription}
+      activeTab={activeTab}
+      onSelectSection={handleSelectSection}
+      onLogout={handleLogout}
+    >
+      {renderWorkspace}
     </AdminLayout>
   );
 }
