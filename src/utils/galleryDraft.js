@@ -20,6 +20,10 @@ export function rememberGalleryUpload(uploadedMediaTypes, url, type) {
   if (key) uploadedMediaTypes.set(key, type);
 }
 
+export function getGalleryUploadType(uploadedMediaTypes, url) {
+  return uploadedMediaTypes?.get(mediaUrlKey(url));
+}
+
 export function galleryPayload(draft, uploadedMediaTypes) {
   const { type, urlType, caption } = draft;
   const url = draft.url.trim();
@@ -29,7 +33,7 @@ export function galleryPayload(draft, uploadedMediaTypes) {
   if (!/^https?:\/\//i.test(url)) {
     throw new Error('Enter a direct media URL starting with https:// or http://.');
   }
-  const uploadedType = uploadedMediaTypes?.get(mediaUrlKey(url));
+  const uploadedType = getGalleryUploadType(uploadedMediaTypes, url);
   if (uploadedType && uploadedType !== type) {
     throw new Error(uploadedType === 'image'
       ? 'This URL belongs to an uploaded image. Select Image or enter a different video URL.'

@@ -1,10 +1,11 @@
-import { changeGalleryType, emptyGalleryDraft, galleryPayload, rememberGalleryUpload } from '../utils/galleryDraft';
+import { changeGalleryType, emptyGalleryDraft, galleryPayload, getGalleryUploadType, rememberGalleryUpload } from '../utils/galleryDraft';
 import { afterRecordDeletion } from '../components/ui/deleteFocus';
 // src/pages/Admin.jsx
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import RecordSearch from '../components/admin/RecordSearch';
 import AdminOverview from '../components/admin/AdminOverview';
+import AdminGalleryPreview from '../components/admin/AdminGalleryPreview';
 import Feedback from '../components/ui/Feedback';
 import DeleteDialog from '../components/ui/DeleteDialog';
 import { fixtureSchedule } from '../utils/fixtureInput';
@@ -59,7 +60,7 @@ export default function Admin({
     age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: ''
   });
   const [galleryForm, setGalleryForm] = useState(emptyGalleryDraft);
-  const uploadedMediaTypes = useRef(new Map());
+  const [uploadedMediaTypes, setUploadedMediaTypes] = useState(() => new Map());
   const [fixtureForm, setFixtureForm] = useState({
     opponent: '', matchDate: '', kickoffTime: '16:00', venue: 'Junda Grounds, Mishomoroni',
     status: 'Upcoming', jundaScore: 0, opponentScore: 0, isHomeMatch: true
@@ -139,7 +140,11 @@ export default function Admin({
 
       const data = await response.json();
       if (response.ok && data.success) {
-        rememberGalleryUpload(uploadedMediaTypes.current, data.url, 'image');
+        setUploadedMediaTypes(current => {
+          const next = new Map(current);
+          rememberGalleryUpload(next, data.url, 'image');
+          return next;
+        });
         if (formType === 'news') setNewsForm(current => ({ ...current, imageUrl: data.url }));
         if (formType === 'squad') setPlayerForm(current => ({ ...current, image: data.url }));
         if (formType === 'gallery') setGalleryForm(current => ({ ...current, url: data.url, urlType: 'image' }));
@@ -265,7 +270,7 @@ export default function Admin({
     setMessage(null);
     let payload;
     try {
-      payload = galleryPayload(galleryForm, uploadedMediaTypes.current);
+      payload = galleryPayload(galleryForm, uploadedMediaTypes);
     } catch (error) {
       return reportError(error.message);
     }
@@ -794,6 +799,8 @@ export default function Admin({
                   disabled={isUploading} onChange={e => setGalleryForm({ ...galleryForm, url: e.target.value, urlType: galleryForm.type })} />
                 <small id="gallery-url-hint">{galleryForm.type === 'video' ? 'Paste a direct link to the hosted video file.' : 'Upload an image to fill this in, or paste a direct link to an image.'}</small>
               </div>
+              <AdminGalleryPreview url={galleryForm.url} type={galleryForm.type} isUploading={isUploading}
+                uploadedType={getGalleryUploadType(uploadedMediaTypes, galleryForm.url)} />
               <button type="submit" className="submit-btn" disabled={isSubmittingGallery || isUploading}>{asyncButtonContent(isSubmittingGallery, "Saving...", "Add to Gallery")}</button>
             </form>
 

@@ -76,7 +76,7 @@
 .public-footer__contact svg { flex: none; color: #a5d3ff; }
 .public-ui:is(.public-news, .public-match-centre, .public-gallery, .public-squad, .public-article, .public-player-profile),
 .club-not-found { background: radial-gradient(ellipse at 80% 0%, #163352, var(--club-night) 68%); }
-.public-ui .public-news__watermark, .public-ui .public-match-centre__watermark, .public-ui .public-gallery__watermark { display: none; }
+.public-ui .public-news__watermark, .public-ui .public-match-centre__watermark { display: none; }
 .public-ui :is(.public-glass, .public-match-centre__match-card, .public-match-centre__table-shell,
   .public-squad__player-card, .public-squad__staff-card, .public-player-profile__header, .public-player-profile__stat,
   .public-player-profile__bio) { background-color: #122a45; border-color: #34577b; border-radius: var(--club-radius); }
@@ -96,10 +96,6 @@
 .public-ui .public-match-centre__section-heading { text-transform: none; }
 .public-ui .club-form-key { color: #d2e6fb; line-height: 1.45; }
 .public-ui .public-player-profile__image-card { overflow: hidden; }
-.public-ui .public-gallery__caption { padding: 1rem; }
-.public-gallery__lightbox:not([open]) { display: none; }
-.public-gallery__lightbox[open] { width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0; color: #f7fbff; }
-.public-gallery__lightbox::backdrop { background: var(--club-night); }
 .club-not-found { min-height: 65vh; display: grid; align-items: center; padding-block: 4rem; }
 .club-not-found p { margin-block: 1rem; }
 @media (max-width: 520px) {

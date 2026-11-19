@@ -345,3 +345,22 @@
 .club-admin .admin-list .subtext { color: var(--club-muted); }
 .club-admin .admin-search { max-width: 25rem; margin-block-end: 1rem; }
 .club-admin .admin-search input { min-height: 44px; border: 1px solid #879bb1; border-radius: .5rem; padding: .55rem .65rem; font: inherit; }
+
+.admin-gallery-preview {
+  display: grid;
+  gap: .6rem;
+  padding: .75rem;
+  border: 1px solid var(--club-line);
+  border-radius: .65rem;
+  background: #f7fafc;
+  color: var(--club-text);
+}
+.admin-gallery-preview > p { margin: 0; }
+.admin-gallery-preview__frame {
+  width: min(100%, 24rem);
+  aspect-ratio: 4 / 3;
+  min-height: 9rem;
+  overflow: hidden;
+  margin: 0;
+  border-radius: .5rem;
+}
