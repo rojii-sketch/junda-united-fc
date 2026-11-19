@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import SEO from '../components/SEO';
@@ -5,7 +6,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { fetchJson } from '../api';
 import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
 
-const placeholderImg = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=500&auto=format&fit=crop';
+const placeholderImg = '/junda-logo.webp';
 
 function hasValue(value) {
   return value !== undefined && value !== null && value !== '';
@@ -68,8 +69,9 @@ export default function PlayerProfile() {
     );
   }
 
+  const portrait = player.image || player.imageUrl;
   const playerImage = transformCloudinaryUrl(
-    player.image || player.imageUrl || placeholderImg,
+    portrait || placeholderImg,
     'f_auto,q_auto,w_1200,c_limit'
   );
 
@@ -90,12 +92,12 @@ export default function PlayerProfile() {
 
       <main className="public-container public-player-profile__container">
         <Link to="/squad" className="public-player-profile__back-link">
-          <span aria-hidden="true">←</span> Back to Squad
+          <ArrowLeft size={18} aria-hidden="true" /> Back to squad
         </Link>
 
         <article className="public-player-profile__hero">
           <motion.figure
-            className="public-player-profile__image-card public-glass"
+            className={`public-player-profile__image-card public-glass${portrait ? '' : ' public-player-profile__image-card--placeholder'}`}
             initial={shouldReduceMotion ? false : { opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.5, ease: 'easeOut' }}
@@ -104,7 +106,7 @@ export default function PlayerProfile() {
               src={playerImage}
               srcSet={getCloudinarySrcSet(player.image || player.imageUrl, [480, 768, 1200]) || undefined}
               sizes="(max-width: 700px) calc(100vw - 2rem), (max-width: 1100px) 50vw, 550px"
-              alt={player.name}
+              alt={portrait ? player.name : ''}
               loading="eager"
               decoding="async"
             />
@@ -126,12 +128,12 @@ export default function PlayerProfile() {
               {player.squadCategory && <p className="public-player-profile__category">{player.squadCategory}</p>}
             </header>
 
-            <div className="public-player-profile__stats" aria-label="Player statistics">
+            <dl className="public-player-profile__stats" aria-label="Player statistics">
               <ProfileStat label="Age" value={player.age} />
               <ProfileStat label="Appearances" value={player.appearances} />
               <ProfileStat label="Goals" value={player.goals} />
               <ProfileStat label="Assists" value={player.assists} />
-            </div>
+            </dl>
 
             {player.bio && (
               <section className="public-player-profile__bio" aria-labelledby="player-bio-heading">
@@ -151,15 +153,15 @@ function ProfileStat({ label, value }) {
 
   return (
     <div className="public-player-profile__stat">
-      <span>{label}</span>
-      <strong>{value}</strong>
+      <dt>{label}</dt>
+      <dd><strong>{value}</strong></dd>
     </div>
   );
 }
 
 function ProfileMessage({ message, onRetry }) {
   return (
-    <div className="public-ui public-player-profile public-player-profile__state-page">
+    <main className="public-ui public-player-profile public-player-profile__state-page">
       <div className="public-container">
         <section className="public-player-profile__state public-glass" role={onRetry ? 'alert' : 'status'}>
           <span className="public-player-profile__eyebrow">Junda United FC Squad</span>
@@ -171,6 +173,6 @@ function ProfileMessage({ message, onRetry }) {
           )}
         </section>
       </div>
-    </div>
+    </main>
   );
 }

@@ -1,67 +1,43 @@
-// src/components/layout/AdminLayout.jsx
-import React, { useEffect } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 
-export default function AdminLayout({ children, sectionTitle, sectionDescription, activeTab, onSelectSection, onSidebarToggle, isSidebarOpen, setIsSidebarOpen }) {
-  const sidebarId = 'admin-sidebar';
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+const query = '(max-width: 700px)';
+function subscribe(listener) {
+  const media = window.matchMedia(query);
+  media.addEventListener('change', listener);
+  return () => media.removeEventListener('change', listener);
+}
 
-  useEffect(() => {
-    if (!isMobile || !isSidebarOpen) return;
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setIsSidebarOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMobile, isSidebarOpen, setIsSidebarOpen]);
+export default function AdminLayout({ children, sectionTitle, sectionDescription, activeTab, onSelectSection, onLogout }) {
+  const mobile = useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const headingRef = useRef(null);
+  const toggleRef = useRef(null);
 
-  const handleSelectSection = (tab) => {
-    onSelectSection(tab);
-    setIsSidebarOpen(false);
-  };
+  function select(section) {
+    onSelectSection(section);
+    setMobileOpen(false);
+    requestAnimationFrame(() => headingRef.current?.focus());
+  }
 
   return (
-    <div className="admin-ui">
-      {/* Mobile backdrop */}
-      {isMobile && isSidebarOpen && (
-        <button
-          type="button"
-          className="admin-backdrop admin-backdrop--visible"
-          onClick={() => setIsSidebarOpen(false)}
-          aria-label="Close navigation"
-          style={{ border: 'none', padding: 0 }}
-        />
-      )}
-
-      <div className="admin-layout">
-        {/* Sidebar */}
-        <AdminSidebar
-          id={sidebarId}
-          isMobile={isMobile}
-          isOpen={isMobile ? isSidebarOpen : true}
-          activeTab={activeTab}
-          onSelectSection={handleSelectSection}
-        />
-
-        {/* Main workspace */}
-        <main className="admin-workspace">
-          <AdminHeader
-            sectionTitle={sectionTitle}
-            sectionDescription={sectionDescription}
-            onSidebarToggle={onSidebarToggle}
-            sidebarId={sidebarId}
-            isSidebarOpen={isSidebarOpen}
-            isMobile={isMobile}
-          />
-
-          <div className="admin-workspace__content">
-            {children}
-          </div>
-        </main>
+    <div className={`admin-ui club-admin${collapsed ? ' club-admin--collapsed' : ''}`}
+      onKeyDown={event => {
+        if (event.key === 'Escape' && mobile && mobileOpen) {
+          setMobileOpen(false);
+          toggleRef.current?.focus();
+        }
+      }}>
+      <a className="ui-skip" href="#admin-workspace">Skip to workspace</a>
+      <AdminHeader title={sectionTitle} description={sectionDescription} headingRef={headingRef} toggleRef={toggleRef}
+        expanded={mobile ? mobileOpen : !collapsed}
+        onToggle={() => mobile ? setMobileOpen(open => !open) : setCollapsed(open => !open)} />
+      <div className="club-admin-nav" hidden={mobile && !mobileOpen}>
+        <AdminSidebar id="admin-sidebar" activeTab={activeTab} onSelectSection={select} onLogout={onLogout} />
       </div>
+      <main id="admin-workspace" tabIndex={-1} className="club-admin-workspace">{children}</main>
     </div>
   );
 }

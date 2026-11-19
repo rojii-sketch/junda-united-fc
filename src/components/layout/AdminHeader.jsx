@@ -1,26 +1,14 @@
-// src/components/layout/AdminHeader.jsx
-import React from 'react';
+import { PanelLeft } from 'lucide-react';
 
-export default function AdminHeader({ sectionTitle, sectionDescription, onSidebarToggle, sidebarId, isSidebarOpen, isMobile }) {
+export default function AdminHeader({ title, description, onToggle, expanded, headingRef, toggleRef }) {
   return (
-    <header className="admin-header">
-      {isMobile && (
-        <button
-          className="admin-mobile-menu-button"
-          type="button"
-          aria-label={isSidebarOpen ? 'Close menu' : 'Open menu'}
-          aria-expanded={isSidebarOpen}
-          aria-controls={sidebarId}
-          onClick={onSidebarToggle}
-        >
-          ☰
-        </button>
-      )}
+    <header className="club-admin-header">
+      <button ref={toggleRef} type="button" onClick={onToggle} aria-controls="admin-sidebar" aria-expanded={expanded}>
+        <PanelLeft size={20} aria-hidden="true" /> <span>Menu</span>
+      </button>
       <div>
-        <h1 className="admin-header__title">{sectionTitle || 'Admin Dashboard'}</h1>
-        {sectionDescription && (
-          <p className="admin-header__description">{sectionDescription}</p>
-        )}
+        <h1 ref={headingRef} tabIndex={-1}>{title}</h1>
+        <p>{description}</p>
       </div>
     </header>
   );

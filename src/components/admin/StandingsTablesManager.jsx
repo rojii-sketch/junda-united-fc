@@ -1,5 +1,8 @@
+import { afterRecordDeletion } from '../ui/deleteFocus';
 // src/components/admin/StandingsTablesManager.jsx
 import { useState } from 'react';
+import DeleteDialog from '../ui/DeleteDialog';
+import Feedback from '../ui/Feedback';
 import { rankTable as rankStandingsTeams } from '../../utils/standingsRanking.js';
 
 // JUNDA-STANDINGS-RANK-001: sporting position is derived (PTS → GD → GF).
@@ -49,11 +52,9 @@ const upsertTeamInTable = (tables, tableId, savedTeam) => {
 // Refetch a single table after mutation so the admin list reflects the
 // canonical derived order (one edit can move several teams). Returns true
 // on success; callers fall back to upsertTeamInTable otherwise.
-const refreshTableFromApi = async (API_BASE, getAuthHeaders, setStandingsTables, tableId) => {
+const refreshTableFromApi = async (adminRequest, setStandingsTables, tableId) => {
   try {
-    const res = await fetch(`${API_BASE}/standings-tables/${tableId}`, {
-      headers: getAuthHeaders(true)
-    });
+    const res = await adminRequest(`/standings-tables/${tableId}`);
     if (!res.ok) return false;
     const freshTable = await res.json();
     setStandingsTables(tables => tables.map(table => table._id === tableId ? freshTable : table));
@@ -79,10 +80,8 @@ export default function StandingsTablesManager({
   standingsTables,
   standingsTablesStatus,
   setStandingsTables,
-  API_BASE,
-  getAuthHeaders,
-  onRetryData,
-  onAuthChange
+  adminRequest,
+  onRetryData
 }) {
   const [selectedTableId, setSelectedTableId] = useState(null);
   const [editingTableId, setEditingTableId] = useState(null);
@@ -93,6 +92,7 @@ export default function StandingsTablesManager({
   const [isSubmittingTeam, setIsSubmittingTeam] = useState(false);
   const [deletingKey, setDeletingKey] = useState(null);
   const [feedback, setFeedback] = useState(null);
+  const [deletion, setDeletion] = useState(null);
 
   const selectedTable = standingsTables.find(t => t._id === selectedTableId) || null;
 
@@ -102,7 +102,8 @@ export default function StandingsTablesManager({
     setTeamForm({ ...EMPTY_TEAM_FORM });
   };
 
-  const showFeedback = (type, message) => setFeedback({ type, message });
+  const showFeedback = (kind, text) => setFeedback({ kind, text });
+  const reportError = text => showFeedback('error', text);
 
   const validateTableForm = (form) => {
     const fields = [
@@ -147,9 +148,10 @@ export default function StandingsTablesManager({
   const handleCreateTable = async (e) => {
     e.preventDefault();
     if (isSubmittingTable) return;
+    setFeedback(null);
 
     const validationError = validateTableForm(tableForm);
-    if (validationError) return alert(validationError);
+    if (validationError) return reportError(validationError);
 
     const payload = {
       category: tableForm.category.trim(),
@@ -160,29 +162,24 @@ export default function StandingsTablesManager({
 
     setIsSubmittingTable(true);
     try {
-      const res = await fetch(`${API_BASE}/standings-tables`, {
+      const res = await adminRequest('/standings-tables', {
         method: 'POST',
-        headers: getAuthHeaders(true),
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
-        if (res.status === 401) {
-          onAuthChange?.(false);
-          return alert('Access Denied. Your session has expired. Please log in again.');
-        }
         const message = await parseError(res);
-        if (res.status === 409) return alert('A standings table with this slug already exists.');
-        return alert(message);
+        if (res.status === 409) return reportError('A standings table with this slug already exists.');
+        return reportError(message);
       }
       const savedTable = await res.json();
       setStandingsTables(tables => upsertTableInList(tables, savedTable));
       setSelectedTableId(savedTable._id);
       setTableForm({ ...EMPTY_TABLE_FORM });
       showFeedback('success', 'Standings table created.');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      requestAnimationFrame(() => document.getElementById('st-category')?.focus());
     } catch (err) {
       console.error(err);
-      alert('Network error communicating with the server.');
+      reportError('Network error communicating with the server.');
     } finally {
       setIsSubmittingTable(false);
     }
@@ -193,7 +190,7 @@ export default function StandingsTablesManager({
     if (isSubmittingTable || !editingTableId) return;
 
     const validationError = validateTableForm(tableForm);
-    if (validationError) return alert(validationError);
+    if (validationError) return reportError(validationError);
 
     const payload = {
       category: tableForm.category.trim(),
@@ -204,19 +201,14 @@ export default function StandingsTablesManager({
 
     setIsSubmittingTable(true);
     try {
-      const res = await fetch(`${API_BASE}/standings-tables/${editingTableId}`, {
+      const res = await adminRequest(`/standings-tables/${editingTableId}`, {
         method: 'PUT',
-        headers: getAuthHeaders(true),
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
-        if (res.status === 401) {
-          onAuthChange?.(false);
-          return alert('Access Denied. Your session has expired. Please log in again.');
-        }
         const message = await parseError(res);
-        if (res.status === 409) return alert('A standings table with this slug already exists.');
-        return alert(message);
+        if (res.status === 409) return reportError('A standings table with this slug already exists.');
+        return reportError(message);
       }
       const updatedTable = await res.json();
       setStandingsTables(tables => upsertTableInList(tables, updatedTable));
@@ -225,7 +217,7 @@ export default function StandingsTablesManager({
       showFeedback('success', 'Standings table updated.');
     } catch (err) {
       console.error(err);
-      alert('Network error communicating with the server.');
+      reportError('Network error communicating with the server.');
     } finally {
       setIsSubmittingTable(false);
     }
@@ -242,24 +234,19 @@ export default function StandingsTablesManager({
     setTableForm({ ...EMPTY_TABLE_FORM });
   };
 
-  const handleDeleteTable = async (item) => {
+  const handleDeleteTable = async (item, restoreFocus) => {
     const key = `table:${item._id}`;
-    if (deletingKey === key) return;
-    if (!window.confirm(`Delete the standings table "${item.category} — ${item.league}" and all its teams?`)) return;
+    if (deletingKey) return;
+    setFeedback(null);
 
     setDeletingKey(key);
     try {
-      const res = await fetch(`${API_BASE}/standings-tables/${item._id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(true)
+      const res = await adminRequest(`/standings-tables/${item._id}`, {
+        method: 'DELETE'
       });
       if (!res.ok) {
-        if (res.status === 401) {
-          onAuthChange?.(false);
-          return alert('Access Denied. Your session has expired. Please log in again.');
-        }
         const message = await parseError(res);
-        return alert(message);
+        return reportError(message);
       }
       setStandingsTables(tables => removeTableFromList(tables, item._id));
       if (selectedTableId === item._id) {
@@ -269,9 +256,10 @@ export default function StandingsTablesManager({
       }
       if (editingTableId === item._id) cancelEditTable();
       showFeedback('success', 'Standings table removed.');
+      restoreFocus();
     } catch (err) {
       console.error(err);
-      alert('Network error communicating with the server.');
+      reportError('Network error communicating with the server.');
     } finally {
       setDeletingKey(null);
     }
@@ -282,29 +270,24 @@ export default function StandingsTablesManager({
     if (isSubmittingTeam || !selectedTableId) return;
 
     const validationError = validateTeamForm(teamForm);
-    if (validationError) return alert(validationError);
+    if (validationError) return reportError(validationError);
 
     const payload = normalizeTeamPayload(teamForm);
 
     setIsSubmittingTeam(true);
     try {
       const tableId = selectedTableId;
-      const res = await fetch(`${API_BASE}/standings-tables/${tableId}/teams`, {
+      const res = await adminRequest(`/standings-tables/${tableId}/teams`, {
         method: 'POST',
-        headers: getAuthHeaders(true),
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
-        if (res.status === 401) {
-          onAuthChange?.(false);
-          return alert('Access Denied. Your session has expired. Please log in again.');
-        }
         const message = await parseError(res);
-        return alert(message);
+        return reportError(message);
       }
       const savedTeam = await res.json();
       const warnings = savedTeamWarnings(savedTeam);
-      const refreshed = await refreshTableFromApi(API_BASE, getAuthHeaders, setStandingsTables, tableId);
+      const refreshed = await refreshTableFromApi(adminRequest, setStandingsTables, tableId);
       if (!refreshed) {
         setStandingsTables(tables => upsertTeamInTable(tables, tableId, savedTeam));
       }
@@ -313,7 +296,7 @@ export default function StandingsTablesManager({
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       console.error(err);
-      alert('Network error communicating with the server.');
+      reportError('Network error communicating with the server.');
     } finally {
       setIsSubmittingTeam(false);
     }
@@ -345,29 +328,24 @@ export default function StandingsTablesManager({
     if (isSubmittingTeam || !editingTeam || !selectedTableId) return;
 
     const validationError = validateTeamForm(teamForm);
-    if (validationError) return alert(validationError);
+    if (validationError) return reportError(validationError);
 
     const payload = normalizeTeamPayload(teamForm);
 
     setIsSubmittingTeam(true);
     try {
       const tableId = selectedTableId;
-      const res = await fetch(`${API_BASE}/standings-tables/${tableId}/teams/${editingTeam._id}`, {
+      const res = await adminRequest(`/standings-tables/${tableId}/teams/${editingTeam._id}`, {
         method: 'PUT',
-        headers: getAuthHeaders(true),
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
-        if (res.status === 401) {
-          onAuthChange?.(false);
-          return alert('Access Denied. Your session has expired. Please log in again.');
-        }
         const message = await parseError(res);
-        return alert(message);
+        return reportError(message);
       }
       const savedTeam = await res.json();
       const warnings = savedTeamWarnings(savedTeam);
-      const refreshed = await refreshTableFromApi(API_BASE, getAuthHeaders, setStandingsTables, tableId);
+      const refreshed = await refreshTableFromApi(adminRequest, setStandingsTables, tableId);
       if (!refreshed) {
         setStandingsTables(tables => upsertTeamInTable(tables, tableId, savedTeam));
       }
@@ -376,39 +354,35 @@ export default function StandingsTablesManager({
       showFeedback('success', warnings.length > 0 ? `Team updated. Note: ${warnings.join('; ')}` : 'Team updated.');
     } catch (err) {
       console.error(err);
-      alert('Network error communicating with the server.');
+      reportError('Network error communicating with the server.');
     } finally {
       setIsSubmittingTeam(false);
     }
   };
 
-  const handleDeleteTeam = async (team) => {
+  const handleDeleteTeam = async (team, restoreFocus) => {
     if (!selectedTableId) return;
     const key = `team:${selectedTableId}:${team._id}`;
-    if (deletingKey === key) return;
-    if (!window.confirm(`Delete "${team.name}" from this standings table?`)) return;
+    if (deletingKey) return;
+    setFeedback(null);
 
     setDeletingKey(key);
     try {
       const tableId = selectedTableId;
-      const res = await fetch(`${API_BASE}/standings-tables/${tableId}/teams/${team._id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(true)
+      const res = await adminRequest(`/standings-tables/${tableId}/teams/${team._id}`, {
+        method: 'DELETE'
       });
       if (!res.ok) {
-        if (res.status === 401) {
-          onAuthChange?.(false);
-          return alert('Access Denied. Your session has expired. Please log in again.');
-        }
         const message = await parseError(res);
-        return alert(message);
+        return reportError(message);
       }
       setStandingsTables(tables => removeTeamFromTable(tables, tableId, team._id));
       if (editingTeam && editingTeam._id === team._id) cancelEditTeam();
       showFeedback('success', 'Team removed.');
+      restoreFocus();
     } catch (err) {
       console.error(err);
-      alert('Network error communicating with the server.');
+      reportError('Network error communicating with the server.');
     } finally {
       setDeletingKey(null);
     }
@@ -424,24 +398,20 @@ export default function StandingsTablesManager({
 
   return (
     <div className="admin-panel admin-panel--stacked">
-      {feedback && (
-        <div className={`admin-feedback ${feedback.type === 'error' ? 'admin-feedback--error' : 'admin-feedback--info'}`} role="status">
-          {feedback.message}
-        </div>
-      )}
-
+      <DeleteDialog request={deletion} onCancel={() => setDeletion(null)} />
+      <Feedback message={feedback} />
       <form onSubmit={isEditingTable ? handleUpdateTable : handleCreateTable} className={`admin-form${isEditingTable ? ' admin-form--editing' : ''}`}>
-        <h3>{isEditingTable ? "📝 Edit Standings Table" : "🆕 Create New Standings Table"}</h3>
+        <h3>{isEditingTable ? "Edit standings table" : "Create standings table"}</h3>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-          <div className="form-group" style={{ flex: '1 1 200px' }}><label htmlFor="st-category">Category</label><input id="st-category" type="text" placeholder="e.g. Senior Team" value={tableForm.category} onChange={e => setTableForm({ ...tableForm, category: e.target.value })} /></div>
-          <div className="form-group" style={{ flex: '1 1 200px' }}><label htmlFor="st-league">League</label><input id="st-league" type="text" placeholder="e.g. FKF Mombasa County League" value={tableForm.league} onChange={e => setTableForm({ ...tableForm, league: e.target.value })} /></div>
+          <div className="form-group" style={{ flex: '1 1 200px' }}><label htmlFor="st-category">Category</label><input id="st-category" required type="text" placeholder="e.g. Senior Team" value={tableForm.category} onChange={e => setTableForm({ ...tableForm, category: e.target.value })} /></div>
+          <div className="form-group" style={{ flex: '1 1 200px' }}><label htmlFor="st-league">League</label><input id="st-league" required type="text" placeholder="e.g. FKF Mombasa County League" value={tableForm.league} onChange={e => setTableForm({ ...tableForm, league: e.target.value })} /></div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-          <div className="form-group" style={{ flex: '2 1 220px' }}><label htmlFor="st-slug">Slug</label><input id="st-slug" type="text" placeholder="e.g. senior-team" value={tableForm.slug} onChange={e => setTableForm({ ...tableForm, slug: e.target.value })} /></div>
+          <div className="form-group" style={{ flex: '2 1 220px' }}><label htmlFor="st-slug">Slug</label><input id="st-slug" type="text" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" aria-describedby="st-slug-hint" placeholder="e.g. senior-team" value={tableForm.slug} onChange={e => setTableForm({ ...tableForm, slug: e.target.value })} /><small id="st-slug-hint">Use lowercase letters, numbers and hyphens, such as senior-team.</small></div>
           <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="st-display">Display Order</label><input id="st-display" type="number" min="0" value={tableForm.displayOrder} onChange={e => setTableForm({ ...tableForm, displayOrder: e.target.value })} /></div>
         </div>
         <button type="submit" className="submit-btn submit-btn--success" disabled={isSubmittingTable}>
-          {asyncButtonContent(isSubmittingTable, "Saving...", isEditingTable ? "💾 Save Table" : "➕ Create Table")}
+          {asyncButtonContent(isSubmittingTable, "Saving...", isEditingTable ? "Save table" : "Create table")}
         </button>
         {isEditingTable && (
           <button type="button" className="cancel-btn" onClick={cancelEditTable}>Cancel Edit</button>
@@ -449,7 +419,7 @@ export default function StandingsTablesManager({
       </form>
 
       <div className="admin-list">
-        <h3 className="admin-list__header">Existing Standings Tables ({standingsTables.length})</h3>
+        <h3 className="admin-list__header" tabIndex={-1}>Existing Standings Tables ({standingsTables.length})</h3>
         {standingsTablesStatus !== 'success' && standingsTablesStatus !== 'error' && (
           <div className="admin-list__state" role="status"><span className="btn-spinner" aria-hidden="true" />Loading standings tables...</div>
         )}
@@ -468,7 +438,10 @@ export default function StandingsTablesManager({
             <div className="admin-row-actions">
               <button type="button" className="tab-btn tab-btn--compact" onClick={() => handleSelectTable(item._id)}>{selectedTableId === item._id ? 'Selected' : 'Select'}</button>
               <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditTable(item)}>Edit</button>
-              <button type="button" className="delete-btn" disabled={isDeleting(`table:${item._id}`)} onClick={() => handleDeleteTable(item)}>{asyncButtonContent(isDeleting(`table:${item._id}`), "Deleting...", "Delete")}</button>
+              <button type="button" className="delete-btn" disabled={isDeleting(`table:${item._id}`)} onClick={event => {
+                const restoreFocus = afterRecordDeletion(event.currentTarget);
+                setDeletion({ question: `Delete "${item.category} — ${item.league}" and all its teams?`, run: () => handleDeleteTable(item, restoreFocus) });
+              }}>{asyncButtonContent(isDeleting(`table:${item._id}`), "Deleting...", "Delete")}</button>
             </div>
           </div>
         ))}
@@ -478,7 +451,7 @@ export default function StandingsTablesManager({
         <div className="admin-panel">
           <h3 style={{ marginBottom: '0.5rem' }}>Selected: {selectedTable.category} — {selectedTable.league}</h3>
           <form onSubmit={isEditingTeam ? handleUpdateTeam : handleAddTeam} className={`admin-form${isEditingTeam ? ' admin-form--editing' : ''}`}>
-            <h3>{isEditingTeam ? "📝 Edit Team" : "➕ Add / Upsert Team"}</h3>
+            <h3>{isEditingTeam ? "Edit team" : "Add or update team"}</h3>
             {isEditingTeam && editingTeam?.position != null && (
               <p className="subtext" style={{ marginTop: 0, color: '#475569' }}>
                 Current derived position: Pos {editingTeam.position} (PTS → GD → GF; not manually editable)
@@ -488,17 +461,17 @@ export default function StandingsTablesManager({
               <div className="form-group" style={{ flex: '2 1 200px' }}><label htmlFor="st-team-name">Team Name</label><input id="st-team-name" type="text" placeholder="e.g. Junda United FC" value={teamForm.name} onChange={e => setTeamForm({ ...teamForm, name: e.target.value })} required /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '0.5rem' }}>
-              <div className="form-group"><label htmlFor="st-team-p">P</label><input id="st-team-p" type="number" value={teamForm.p} onChange={e => setTeamForm({ ...teamForm, p: e.target.value })} /></div>
-              <div className="form-group"><label htmlFor="st-team-w">W</label><input id="st-team-w" type="number" value={teamForm.w} onChange={e => setTeamForm({ ...teamForm, w: e.target.value })} /></div>
-              <div className="form-group"><label htmlFor="st-team-d">D</label><input id="st-team-d" type="number" value={teamForm.d} onChange={e => setTeamForm({ ...teamForm, d: e.target.value })} /></div>
-              <div className="form-group"><label htmlFor="st-team-l">L</label><input id="st-team-l" type="number" value={teamForm.l} onChange={e => setTeamForm({ ...teamForm, l: e.target.value })} /></div>
-              <div className="form-group"><label htmlFor="st-team-gf">GF</label><input id="st-team-gf" type="number" value={teamForm.gf} onChange={e => setTeamForm({ ...teamForm, gf: e.target.value })} /></div>
-              <div className="form-group"><label htmlFor="st-team-ga">GA</label><input id="st-team-ga" type="number" value={teamForm.ga} onChange={e => setTeamForm({ ...teamForm, ga: e.target.value })} /></div>
-              <div className="form-group"><label htmlFor="st-team-pts">Pts</label><input id="st-team-pts" type="number" value={teamForm.pts} onChange={e => setTeamForm({ ...teamForm, pts: e.target.value })} style={{ fontWeight: 'bold' }} /></div>
+              <div className="form-group"><label htmlFor="st-team-p">P</label><input id="st-team-p" type="number" min="0" step="1" value={teamForm.p} onChange={e => setTeamForm({ ...teamForm, p: e.target.value })} /></div>
+              <div className="form-group"><label htmlFor="st-team-w">W</label><input id="st-team-w" type="number" min="0" step="1" value={teamForm.w} onChange={e => setTeamForm({ ...teamForm, w: e.target.value })} /></div>
+              <div className="form-group"><label htmlFor="st-team-d">D</label><input id="st-team-d" type="number" min="0" step="1" value={teamForm.d} onChange={e => setTeamForm({ ...teamForm, d: e.target.value })} /></div>
+              <div className="form-group"><label htmlFor="st-team-l">L</label><input id="st-team-l" type="number" min="0" step="1" value={teamForm.l} onChange={e => setTeamForm({ ...teamForm, l: e.target.value })} /></div>
+              <div className="form-group"><label htmlFor="st-team-gf">GF</label><input id="st-team-gf" type="number" min="0" step="1" value={teamForm.gf} onChange={e => setTeamForm({ ...teamForm, gf: e.target.value })} /></div>
+              <div className="form-group"><label htmlFor="st-team-ga">GA</label><input id="st-team-ga" type="number" min="0" step="1" value={teamForm.ga} onChange={e => setTeamForm({ ...teamForm, ga: e.target.value })} /></div>
+              <div className="form-group"><label htmlFor="st-team-pts">Pts</label><input id="st-team-pts" type="number" min="0" step="1" value={teamForm.pts} onChange={e => setTeamForm({ ...teamForm, pts: e.target.value })} style={{ fontWeight: 'bold' }} /></div>
             </div>
             <div className="form-group"><label htmlFor="st-team-form">Form History (Comma separated)</label><input id="st-team-form" type="text" placeholder="W,W,D,L,W" value={teamForm.formInput} onChange={e => setTeamForm({ ...teamForm, formInput: e.target.value })} /></div>
             <button type="submit" className="submit-btn submit-btn--success" disabled={isSubmittingTeam}>
-              {asyncButtonContent(isSubmittingTeam, "Saving...", isEditingTeam ? "💾 Save Team" : "➕ Save Team")}
+              {asyncButtonContent(isSubmittingTeam, "Saving...", "Save team")}
             </button>
             {isEditingTeam && (
               <button type="button" className="cancel-btn" onClick={cancelEditTeam}>Cancel Edit</button>
@@ -506,14 +479,14 @@ export default function StandingsTablesManager({
           </form>
 
           <div className="admin-list">
-            <h3 className="admin-list__header">Teams ({selectedTable.teams?.length || 0})</h3>
+            <h3 className="admin-list__header" tabIndex={-1}>Teams ({selectedTable.teams?.length || 0})</h3>
             {selectedTable.teams?.length === 0 && (
               <div className="admin-list__state">No teams in this table yet. Add one above.</div>
             )}
             {(selectedTable.teams || []).map(team => (
               <div className="admin-list__row" key={team._id} style={{ alignItems: 'center', flexWrap: 'wrap' }}>
                 <div className="admin-list__info">
-                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.position ?? team.rank}. {team.name}</strong>
+                  <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Pos {team.position ?? "—"}. {team.name}</strong>
                   <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>
                     P {team.p} • W {team.w} • D {team.d} • L {team.l} • GF {team.gf} • GA {team.ga} • Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span>
                     <span style={{ display: 'inline-flex', gap: '0.25rem', marginLeft: '0.5rem' }}>
@@ -523,7 +496,10 @@ export default function StandingsTablesManager({
                 </div>
                 <div className="admin-row-actions">
                   <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditTeam(team)}>Edit</button>
-                  <button type="button" className="delete-btn" disabled={isDeleting(`team:${selectedTable._id}:${team._id}`)} onClick={() => handleDeleteTeam(team)}>{asyncButtonContent(isDeleting(`team:${selectedTable._id}:${team._id}`), "Deleting...", "Delete")}</button>
+                  <button type="button" className="delete-btn" disabled={isDeleting(`team:${selectedTable._id}:${team._id}`)} onClick={event => {
+                const restoreFocus = afterRecordDeletion(event.currentTarget);
+                setDeletion({ question: `Delete "${team.name}" from this table?`, run: () => handleDeleteTeam(team, restoreFocus) });
+              }}>{asyncButtonContent(isDeleting(`team:${selectedTable._id}:${team._id}`), "Deleting...", "Delete")}</button>
                 </div>
               </div>
             ))}

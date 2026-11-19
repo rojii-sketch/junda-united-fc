@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Menu, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import clubLogo from '../assets/navbar-logo.webp';
 
@@ -6,6 +7,7 @@ const mobileMenuId = 'public-navbar-mobile-menu';
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const toggle = useRef(null);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -13,6 +15,7 @@ export default function Navbar() {
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         setIsOpen(false);
+        toggle.current?.focus();
       }
     };
 
@@ -21,16 +24,6 @@ export default function Navbar() {
   }, [isOpen]);
 
   const closeMenu = () => setIsOpen(false);
-
-  const scrollToStandings = () => {
-    closeMenu();
-    setTimeout(() => {
-      const element = document.getElementById('standings');
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
-  };
 
   const linkClassName = ({ isActive }) => (
     isActive
@@ -41,25 +34,24 @@ export default function Navbar() {
   return (
     <nav className="public-ui public-navbar" aria-label="Primary navigation">
       <div className="public-navbar__inner">
-        <div className="public-navbar__brand">
+        <NavLink to="/" className="public-navbar__brand" onClick={closeMenu}>
           <img
             src={clubLogo}
-            alt="Junda United FC crest"
+            alt=""
             className="public-navbar__logo"
           />
           <span className="public-navbar__name">Junda United FC</span>
-        </div>
+        </NavLink>
 
         <div className="public-navbar__links public-navbar__links--desktop">
           <NavLink to="/" className={linkClassName}>
             News
           </NavLink>
           <NavLink to="/fixtures" className={linkClassName}>
-            Fixtures
+            Match Centre
           </NavLink>
           <NavLink
-            to="/fixtures"
-            onClick={scrollToStandings}
+            to="/fixtures#standings"
             className="public-navbar__link"
           >
             Standings
@@ -73,6 +65,7 @@ export default function Navbar() {
         </div>
 
         <button
+          ref={toggle}
           type="button"
           className="public-navbar__toggle"
           onClick={() => setIsOpen(open => !open)}
@@ -80,22 +73,22 @@ export default function Navbar() {
           aria-expanded={isOpen}
           aria-controls={mobileMenuId}
         >
-          <span aria-hidden="true">{isOpen ? '✕' : '☰'}</span>
+          {isOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
         </button>
       </div>
 
       <div
         id={mobileMenuId}
         className={`public-navbar__mobile-menu${isOpen ? ' public-navbar__mobile-menu--open' : ''}`}
-        aria-hidden={!isOpen}
+        hidden={!isOpen}
       >
         <NavLink to="/" onClick={closeMenu} className={linkClassName}>
           News
         </NavLink>
         <NavLink to="/fixtures" onClick={closeMenu} className={linkClassName}>
-          Fixtures
+          Match Centre
         </NavLink>
-        <NavLink to="/fixtures" onClick={scrollToStandings} className="public-navbar__link">
+        <NavLink to="/fixtures#standings" onClick={closeMenu} className="public-navbar__link">
           Standings
         </NavLink>
         <NavLink to="/gallery" onClick={closeMenu} className={linkClassName}>

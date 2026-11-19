@@ -1,3 +1,6 @@
+import { parseMatchDate } from '../utils/fixtureInput';
+import { useLocation } from 'react-router-dom';
+import PublicHero from '../components/ui/PublicHero';
 import React from 'react';
 import StandingsTable from '../components/StandingsTable';
 import { motion, useReducedMotion } from 'framer-motion';
@@ -8,15 +11,20 @@ export default function FixturesPage() {
   const [standingsTables, setStandingsTables] = React.useState([]);
   const [fixturesStatus, setFixturesStatus] = React.useState('loading');
   const [standingsTablesStatus, setStandingsTablesStatus] = React.useState('loading');
-  const [fixturesError, setFixturesError] = React.useState(null);
+  const { hash } = useLocation();
+  const standingsRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (hash !== '#standings') return;
+    standingsRef.current?.focus({ preventScroll: true });
+    standingsRef.current?.scrollIntoView();
+  }, [hash]);
   const [fixturesRetryCount, setFixturesRetryCount] = React.useState(0);
   const [standingsTablesRetryCount, setStandingsTablesRetryCount] = React.useState(0);
 
   React.useEffect(() => {
     const controller = new AbortController();
 
-    setFixturesStatus('loading');
-    setFixturesError(null);
 
     fetchJson('/fixtures', controller.signal)
       .then(fixturesData => {
@@ -26,7 +34,6 @@ export default function FixturesPage() {
       .catch(error => {
         if (error.name === 'AbortError') return;
         console.error('Error retrieving fixtures:', error);
-        setFixturesError(error);
         setFixturesStatus('error');
       });
 
@@ -36,7 +43,6 @@ export default function FixturesPage() {
   React.useEffect(() => {
     const controller = new AbortController();
 
-    setStandingsTablesStatus('loading');
 
     fetchJson('/standings-tables', controller.signal)
       .then(standingsTablesData => {
@@ -53,27 +59,23 @@ export default function FixturesPage() {
   }, [standingsTablesRetryCount]);
 
   const upcomingMatches = fixtures.filter(match => match.status === 'Upcoming' || !match.status);
-  const completedMatches = fixtures.filter(match => match.status === 'Completed');
+  const completedMatches = fixtures.filter(match => match.status === 'Completed')
+    .sort((first, second) => (parseMatchDate(second.matchDate)?.getTime() ?? -Infinity)
+        - (parseMatchDate(first.matchDate)?.getTime() ?? -Infinity));
   const nextFixture = getNextFixture(upcomingMatches);
   const remainingUpcomingMatches = nextFixture
     ? upcomingMatches.filter(match => match._id !== nextFixture._id)
     : [];
 
-  const retryFixtures = () => setFixturesRetryCount(count => count + 1);
-  const retryStandingsTables = () => setStandingsTablesRetryCount(count => count + 1);
+  const retryFixtures = () => { setFixturesStatus('loading'); setFixturesRetryCount(count => count + 1); };
+  const retryStandingsTables = () => { setStandingsTablesStatus('loading'); setStandingsTablesRetryCount(count => count + 1); };
 
   return (
     <div className="public-ui public-match-centre">
       <ClubWatermark />
 
       <main className="public-match-centre__container">
-        <header className="public-match-centre__header public-glass">
-          <span className="public-match-centre__eyebrow">Junda United FC</span>
-          <h1 className="public-match-centre__title">Match Centre</h1>
-          <p className="public-match-centre__intro">
-            Follow fixtures, results, and the latest league standings across the campaign.
-          </p>
-        </header>
+        <PublicHero title="Match Centre" description="Fixtures, results and league standings across the campaign." />
 
         <section className="public-match-centre__section" aria-labelledby="upcoming-fixtures-heading">
           <SectionHeading id="upcoming-fixtures-heading" accent="blue">
@@ -129,7 +131,7 @@ export default function FixturesPage() {
         </section>
 
         <section
-          id="standings"
+          id="standings" ref={standingsRef} tabIndex={-1}
           className="public-match-centre__section public-match-centre__standings-section"
           aria-labelledby="league-standings-heading"
         >
@@ -189,25 +191,6 @@ function getNextFixture(matches) {
   )).match;
 }
 
-function parseMatchDate(value) {
-  if (typeof value !== 'string' || !value.trim()) return null;
-
-  const trimmedValue = value.trim();
-  const dayMonthYear = trimmedValue.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-  if (dayMonthYear) {
-    const [, day, month, year] = dayMonthYear;
-    const date = new Date(Number(year), Number(month) - 1, Number(day));
-    return date.getFullYear() === Number(year)
-      && date.getMonth() === Number(month) - 1
-      && date.getDate() === Number(day)
-      ? date
-      : null;
-  }
-
-  const parsedTime = Date.parse(trimmedValue);
-  return Number.isNaN(parsedTime) ? null : new Date(parsedTime);
-}
-
 function SectionHeading({ id, accent, children }) {
   return (
     <h2 id={id} className={`public-match-centre__section-heading public-match-centre__section-heading--${accent}`}>
@@ -225,7 +208,7 @@ function FixtureCard({ match, featured = false }) {
           {match.isHomeMatch ? 'Home match' : 'Away match'}
         </span>
         <strong>{match.matchDate}</strong>
-        <span>Kickoff: {match.kickoffTime}</span>
+        <span>{match.kickoffTime ? `Kickoff: ${match.kickoffTime}` : 'Kickoff time to be announced'}</span>
       </div>
       <div className="public-match-centre__teams" aria-label={`Junda United versus ${match.opponent}`}>
         <strong>Junda United</strong>

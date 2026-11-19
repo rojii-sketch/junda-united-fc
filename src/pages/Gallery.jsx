@@ -1,5 +1,8 @@
+import { X } from 'lucide-react';
+import Modal from '../components/ui/Modal';
+import PublicHero from '../components/ui/PublicHero';
 import React from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import SEO from '../components/SEO';
 import { fetchJson } from '../api';
 import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
@@ -13,9 +16,6 @@ export default function Gallery() {
   const [gallery, setGallery] = React.useState([]);
   const [status, setStatus] = React.useState('loading');
   const [retryCount, setRetryCount] = React.useState(0);
-  const triggerRef = React.useRef(null);
-  const closeButtonRef = React.useRef(null);
-  const previousImageRef = React.useRef(null);
   const shouldReduceMotion = useReducedMotion();
 
   React.useEffect(() => {
@@ -34,39 +34,6 @@ export default function Gallery() {
 
     return () => controller.abort();
   }, [retryCount]);
-
-  React.useEffect(() => {
-    if (selectedImage) {
-      previousImageRef.current = selectedImage;
-      closeButtonRef.current?.focus();
-      return undefined;
-    }
-
-    if (previousImageRef.current) {
-      triggerRef.current?.focus();
-      previousImageRef.current = null;
-    }
-
-    return undefined;
-  }, [selectedImage]);
-
-  React.useEffect(() => {
-    if (!selectedImage) return undefined;
-
-    const handleKeyDown = event => {
-      if (event.key === 'Escape') {
-        setSelectedImage(null);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedImage]);
-
-  const openImage = (item, event) => {
-    triggerRef.current = event.currentTarget;
-    setSelectedImage(item);
-  };
 
   if (status === 'loading') {
     return <PageMessage message="Loading the club gallery..." />;
@@ -99,11 +66,7 @@ export default function Gallery() {
       />
 
       <main className="public-container public-gallery__container">
-        <header className="public-gallery__header public-glass">
-          <span className="public-gallery__eyebrow">Junda United FC</span>
-          <h1>Club gallery</h1>
-          <p>Matchdays, training sessions, academy activity, and community moments from around the club.</p>
-        </header>
+        <PublicHero title="Club gallery" description="Matchdays, training, academy activity and community moments." />
 
         {gallery.length === 0 ? (
           <section className="public-gallery__empty public-glass" aria-labelledby="gallery-empty-heading">
@@ -116,22 +79,13 @@ export default function Gallery() {
               <MediaCard
                 key={item._id}
                 item={item}
-                onOpenImage={openImage}
+                onOpenImage={setSelectedImage}
               />
             ))}
           </section>
         )}
 
-        <AnimatePresence>
-          {selectedImage && (
-            <ImageLightbox
-              image={selectedImage}
-              closeButtonRef={closeButtonRef}
-              onClose={() => setSelectedImage(null)}
-              shouldReduceMotion={shouldReduceMotion}
-            />
-          )}
-        </AnimatePresence>
+        {selectedImage && <ImageLightbox image={selectedImage} onClose={() => setSelectedImage(null)} />}
       </main>
     </div>
   );
@@ -197,7 +151,7 @@ function GalleryThumbnail({ item, onOpen }) {
         <button
           type="button"
           className="public-gallery__image-trigger"
-          onClick={event => onOpen(item, event)}
+          onClick={() => onOpen(item)}
           aria-label={`Open image${item.caption ? `: ${item.caption}` : ''}`}
         >
           <img
@@ -220,58 +174,29 @@ function GalleryThumbnail({ item, onOpen }) {
   );
 }
 
-function ImageLightbox({ image, closeButtonRef, onClose, shouldReduceMotion }) {
+function ImageLightbox({ image, onClose }) {
   const [hasError, setHasError] = React.useState(false);
 
   return (
-    <motion.div
-      className="public-gallery__lightbox"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Junda United FC image viewer"
-      initial={shouldReduceMotion ? false : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={shouldReduceMotion ? undefined : { opacity: 0 }}
-      onClick={onClose}
-    >
-      <button
-        ref={closeButtonRef}
-        type="button"
-        className="public-gallery__lightbox-close"
-        aria-label="Close image viewer"
-        onClick={onClose}
-      >
-        <span aria-hidden="true">✕</span>
+    <Modal className="public-gallery__lightbox" label="Club image viewer" onClose={onClose}
+      onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
+      <button type="button" className="public-gallery__lightbox-close" aria-label="Close image viewer" onClick={onClose}>
+        <X size={24} aria-hidden="true" />
       </button>
-      <motion.figure
-        className="public-gallery__lightbox-content"
-        initial={shouldReduceMotion ? false : { scale: 0.96, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={shouldReduceMotion ? undefined : { scale: 0.96, opacity: 0 }}
-        onClick={event => event.stopPropagation()}
-      >
-        {!hasError ? (
-          <img
-            src={transformCloudinaryUrl(image.url, 'f_auto,q_auto,w_1600,c_limit')}
-            alt={image.caption || 'Junda United Club Asset'}
-            onError={() => setHasError(true)}
-          />
-        ) : (
-          <div className="public-gallery__media-fallback" role="img" aria-label="Image unavailable">
-            Image unavailable
-          </div>
+      <figure className="public-gallery__lightbox-content">
+        {hasError ? <p className="public-gallery__media-fallback">Image unavailable</p> : (
+          <img src={transformCloudinaryUrl(image.url, 'f_auto,q_auto,w_1600,c_limit')}
+            alt={image.caption || 'Junda United club gallery image'} onError={() => setHasError(true)} />
         )}
-        {image.caption && (
-          <figcaption id="gallery-lightbox-caption">{image.caption}</figcaption>
-        )}
-      </motion.figure>
-    </motion.div>
+        {image.caption && <figcaption>{image.caption}</figcaption>}
+      </figure>
+    </Modal>
   );
 }
 
 function PageMessage({ message, onRetry }) {
   return (
-    <div className="public-ui public-gallery public-gallery__state-page">
+    <main className="public-ui public-gallery public-gallery__state-page">
       <div className="public-container">
         <section className="public-gallery__state public-glass" role={onRetry ? 'alert' : 'status'}>
           <span className="public-gallery__eyebrow">Junda United FC Gallery</span>
@@ -283,6 +208,6 @@ function PageMessage({ message, onRetry }) {
           )}
         </section>
       </div>
-    </div>
+    </main>
   );
 }

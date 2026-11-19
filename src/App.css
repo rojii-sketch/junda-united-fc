@@ -1,7 +1,7 @@
 /* src/App.css */
 :root {
-  --primary-color: #c2185b;   /* Deep vibrant red for headers and branding */
-  --accent-color: #d32f2f;    /* Bright matchday red */
+  --primary-color: var(--club-blue);
+  --accent-color: #103f7b;
   --highlight-color: #f59e0b; /* Gold for jersey numbers and active links */
   --text-dark: #1f2937;
   --bg-light: #f3f4f6;
@@ -362,8 +362,8 @@ body {
 }
 /* High-Contrast Admin Submit Button */
 .submit-btn {
-  background: var(--primary-color); /* Deep crimson red */
-  color: #ffffff;                  /* Crisp white text for perfect contrast */
+  background: var(--primary-color);
+  color: #ffffff;
   font-weight: 700;
   border: none;
   padding: 0.85rem;
@@ -374,7 +374,7 @@ body {
 }
 
 .submit-btn:hover {
-  background: var(--accent-color);  /* Shifts to bright matchday red on hover */
+  background: var(--accent-color);
   opacity: 1;                       /* Removes the old opacity filter */
 }
 /* Item List / Delete Row Styles */
@@ -519,7 +519,7 @@ body {
 }
 
 .toggle-password-btn:hover {
-  color: var(--primary-color); /* Matches Junda United Red on hover */
+  color: var(--primary-color);
 }
 /* Clickable Card Link Wrapping Transitions */
 .news-card-link {

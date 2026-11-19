@@ -1,5 +1,7 @@
 import { rankTable as rankStandingsTeams } from '../utils/standingsRanking.js';
 
+const formLabels = { W: 'Win', D: 'Draw', L: 'Loss' };
+
 // JUNDA-STANDINGS-RANK-001: sporting position is derived (PTS → GD → GF,
 // 1,2,2,4). The backend is canonical; this component defensively derives
 // the same order so old/cached payloads without `position` still render
@@ -51,9 +53,9 @@ export default function StandingsTable({
           <h3 id={headingId}>{league}</h3>
           <p>{category}</p>
         </div>
-        <span className="public-match-centre__table-status">Current table</span>
+        <p className="club-form-key">Recent form · W Win · D Draw · L Loss</p>
       </div>
-      <div className="public-match-centre__table-scroll" tabIndex="0" aria-label="Scrollable league standings table">
+      <div className="public-match-centre__table-scroll" tabIndex={0} role="region" aria-label={`${league} standings table`}>
         <table className="public-match-centre__table">
           <caption className="public-match-centre__sr-only">
             League standings showing position, club, matches played, wins, draws, losses, goal difference, points, and recent form.
@@ -83,7 +85,7 @@ export default function StandingsTable({
                   <td className={team.position <= 2 ? 'public-match-centre__position--top' : ''}>{team.position}</td>
                   <th scope="row">
                     <span className="public-match-centre__club-name">
-                      {isJunda && <span aria-hidden="true">🛡️</span>}
+                      {isJunda && <img src="/junda-logo.webp" width="20" height="20" alt="" />}
                       {teamName}
                     </span>
                   </th>
@@ -96,11 +98,11 @@ export default function StandingsTable({
                   </td>
                   <td className="public-match-centre__points">{team.pts}</td>
                   <td>
-                    <div className="public-match-centre__form" aria-label={`Recent form: ${(team.form || []).join(', ') || 'not available'}`}>
+                    <div className="public-match-centre__form" role="group" aria-label={`Recent form: ${(team.form || []).map(result => formLabels[result] || result).join(', ') || 'unavailable'}`}>
                       {(team.form || []).map((form, formIndex) => (
                         <span
                           className={`public-match-centre__form-badge public-match-centre__form-badge--${form.toLowerCase()}`}
-                          key={`${rowKey}-${form}-${formIndex}`}
+                          key={`${rowKey}-${form}-${formIndex}`} aria-hidden="true"
                         >
                           {form}
                         </span>

@@ -1,4 +1,6 @@
 import React from 'react';
+import { Link2 } from 'lucide-react';
+import PublicHero from '../components/ui/PublicHero';
 import { Link } from 'react-router-dom';
 import SEO from '../components/SEO';
 import { motion } from 'framer-motion';
@@ -9,6 +11,7 @@ export default function News() {
   const [news, setNews] = React.useState([]);
   const [status, setStatus] = React.useState('loading');
   const [retryCount, setRetryCount] = React.useState(0);
+  const [shareStatus, setShareStatus] = React.useState('');
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -53,12 +56,16 @@ export default function News() {
           text: `Check out this update from Junda United FC!\n\n${articleTitle}`,
           url: articleUrl,
         });
-      } catch {
-        console.log('User cancelled share');
+        return;
+      } catch (error) {
+        if (error.name === 'AbortError') return;
       }
-    } else {
-      const message = `Check out this update from Junda United FC!\n\n${articleTitle}\n${articleUrl}`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+    }
+    try {
+      await navigator.clipboard.writeText(articleUrl);
+      setShareStatus('Story link copied.');
+    } catch {
+      setShareStatus('Could not copy the link. Open the story to share its address.');
     }
   };
 
@@ -70,13 +77,13 @@ export default function News() {
           description="Latest match reports, club announcements, and squad news from Junda United FC."
         />
         <ClubWatermark />
-        <div className="public-container public-news__empty-container">
+        <main className="public-container public-news__container">
+          <NewsHero />
           <div className="public-news__empty public-glass">
-            <span className="public-news__eyebrow">Junda United FC</span>
-            <h1 className="public-news__empty-title">No news posted yet.</h1>
+            <h2 className="public-news__empty-title">No news posted yet</h2>
             <p>Check back later for match updates and official announcements from Junda United FC.</p>
           </div>
-        </div>
+        </main>
       </div>
     );
   }
@@ -93,13 +100,8 @@ export default function News() {
       <ClubWatermark />
 
       <main className="public-container public-news__container">
-        <header className="public-news__header public-glass">
-          <span className="public-news__eyebrow">Junda United FC</span>
-          <h1 className="public-news__heading">Latest Club News</h1>
-          <p className="public-news__intro">
-            Match reports, club announcements, and stories from around Junda United FC.
-          </p>
-        </header>
+        <NewsHero />
+        <p className="club-share-status" role="status">{shareStatus}</p>
 
         <section className="public-news__featured-section" aria-labelledby="featured-story-heading">
           <div className="public-news__section-label">
@@ -109,7 +111,6 @@ export default function News() {
             <Link
               to={`/news/${featuredArticle._id}`}
               className="public-news__featured-link"
-              aria-labelledby="featured-story-heading"
             >
               <ArticleImage
                 item={featuredArticle}
@@ -135,7 +136,7 @@ export default function News() {
                 className="public-news__share"
                 onClick={() => handleShare(featuredArticle._id, featuredArticle.title)}
               >
-                <span aria-hidden="true">🔗</span> Share story
+                <Link2 size={18} aria-hidden="true" /> Share story
               </button>
             </div>
           </article>
@@ -177,7 +178,7 @@ export default function News() {
                       className="public-news__share"
                       onClick={() => handleShare(item._id, item.title)}
                     >
-                      <span aria-hidden="true">🔗</span> Share
+                      <Link2 size={18} aria-hidden="true" /> Share
                     </button>
                   </div>
                 </article>
@@ -188,6 +189,10 @@ export default function News() {
       </main>
     </div>
   );
+}
+
+function NewsHero() {
+  return <PublicHero home title="Junda United FC" description="Club news, match reports and announcements from the pride of Mishomoroni." />;
 }
 
 function getFeaturedArticle(articles) {
@@ -215,10 +220,11 @@ function ArticleMeta({ item }) {
 }
 
 function ArticleImage({ item, className, sizes, widths, eager = false }) {
-  if (!item.imageUrl) {
+  const [failed, setFailed] = React.useState(false);
+  if (!item.imageUrl || failed) {
     return (
       <div className={`${className} public-news__media-placeholder`} aria-hidden="true">
-        <span>Junda United FC</span>
+        <img src="/junda-logo.webp" alt="" width="96" height="96" />
       </div>
     );
   }
@@ -230,6 +236,7 @@ function ArticleImage({ item, className, sizes, widths, eager = false }) {
         srcSet={getCloudinarySrcSet(item.imageUrl, widths) || undefined}
         sizes={sizes}
         alt={item.title}
+        onError={() => setFailed(true)}
         loading={eager ? 'eager' : 'lazy'}
         decoding="async"
       />
@@ -253,10 +260,10 @@ function ClubWatermark() {
 
 function PageMessage({ message, onRetry }) {
   return (
-    <div className="public-ui public-news public-news__status-page">
+    <main className="public-ui public-news public-news__status-page">
       <div className="public-container">
-        <div className="public-news__status public-glass">
-          <p>{message}</p>
+        <div className="public-news__status public-glass" role={onRetry ? 'alert' : 'status'}>
+          <h1>{message}</h1>
           {onRetry && (
             <button type="button" className="public-news__retry" onClick={onRetry}>
               Try again
@@ -264,6 +271,6 @@ function PageMessage({ message, onRetry }) {
           )}
         </div>
       </div>
-    </div>
+    </main>
   );
 }

@@ -1,6 +1,16 @@
+import { changeGalleryType, emptyGalleryDraft, galleryPayload, rememberGalleryUpload } from '../utils/galleryDraft';
+import { afterRecordDeletion } from '../components/ui/deleteFocus';
 // src/pages/Admin.jsx
-import { useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import RecordSearch from '../components/admin/RecordSearch';
+import AdminOverview from '../components/admin/AdminOverview';
+import Feedback from '../components/ui/Feedback';
+import DeleteDialog from '../components/ui/DeleteDialog';
+import { fixtureSchedule } from '../utils/fixtureInput';
 import AdminLayout from '../components/layout/AdminLayout';
+import SEO from '../components/SEO';
+import { Pencil, Trash2, Upload } from 'lucide-react';
 import StandingsTablesManager from '../components/admin/StandingsTablesManager';
 import '../Admin.css';
 
@@ -12,20 +22,29 @@ export default function Admin({
   standings, setStandings,
   standingsTables, setStandingsTables,
   standingsTablesStatus,
-  adminAuthHeaders,
+  adminRequest,
   API_BASE,
   collectionStatuses,
   onRetryData,
-  onAuthChange
+  onAuthChange,
+  sessionNotice
 }) {
-  const [activeTab, setActiveTab] = useState('news');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [loginMessage, setLoginMessage] = useState(sessionNotice);
+  const [message, setMessage] = useState(null);
+  const [deletion, setDeletion] = useState(null);
+  const [newsQuery, setNewsQuery] = useState('');
+  const [squadQuery, setSquadQuery] = useState('');
+  const reportError = text => setMessage({ kind: 'error', text });
+  const reportSuccess = text => setMessage({ kind: 'success', text });
 
-  // Sidebar state management - moved here to be before conditional return
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  async function showRequestError(response, fallback) {
+    const details = await response.json().catch(() => null);
+    reportError(details?.error || details?.message || fallback);
+  }
 
   // 🎯 JWT Authentication State
-  const [adminToken, setAdminToken] = useState(sessionStorage.getItem('junda_jwt') || null);
-  const [isAuthenticated, setIsAuthenticated] = useState(!!sessionStorage.getItem('junda_jwt'));
+  const [adminToken] = useState(() => sessionStorage.getItem('junda_jwt'));
 
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
@@ -39,9 +58,10 @@ export default function Admin({
     name: '', position: '', jerseyNumber: '', role: 'player', image: '',
     age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: ''
   });
-  const [galleryForm, setGalleryForm] = useState({ type: 'image', url: '', caption: '' });
+  const [galleryForm, setGalleryForm] = useState(emptyGalleryDraft);
+  const uploadedMediaTypes = useRef(new Map());
   const [fixtureForm, setFixtureForm] = useState({
-    opponent: '', matchDate: '', kickoffTime: '16:00 EAT', venue: 'Junda Grounds, Mishomoroni',
+    opponent: '', matchDate: '', kickoffTime: '16:00', venue: 'Junda Grounds, Mishomoroni',
     status: 'Upcoming', jundaScore: 0, opponentScore: 0, isHomeMatch: true
   });
   const [standingForm, setStandingForm] = useState({
@@ -60,18 +80,12 @@ export default function Admin({
   const [editingStandingId, setEditingStandingId] = useState(null);
 
   // 🎯 Sub-view toggle within the Standings tab (legacy single table vs multi-standings tables)
-  const [standingsSubview, setStandingsSubview] = useState('legacy');
-
-  const getAuthHeaders = (isJson = true) => {
-    const headers = { 'Authorization': `Bearer ${adminToken}` };
-    if (isJson) headers['Content-Type'] = 'application/json';
-    return headers;
-  };
+  const [standingsSubview, setStandingsSubview] = useState('tables');
 
   const handleLogin = async (e) => {
     if (e) e.preventDefault();
     if (isLoggingIn) return;
-    if (!usernameInput || !passwordInput) return alert('Both username and password are required!');
+    setLoginMessage(null);
 
     // 🎯 Trigger the loading animation
     setIsLoggingIn(true);
@@ -86,59 +100,56 @@ export default function Admin({
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setAdminToken(data.token);
-        sessionStorage.setItem('junda_jwt', data.token);
-        setIsAuthenticated(true);
-        onAuthChange?.(true);
-        // alert('🔒 Session Authenticated Successfully!'); // (Optional: can remove this alert now that UI feels responsive)
+        onAuthChange?.(true, null, data.token);
       } else {
-        alert(data.message || 'Access Denied. Incorrect username or password.');
+        setLoginMessage({ kind: 'error', text: data.message || data.error || 'Check your username and password, then try again.' });
         setPasswordInput('');
       }
     } catch (err) {
       console.error(err);
-      alert('Server error trying to authenticate.');
+      setLoginMessage({ kind: 'error', text: 'Could not reach the sign-in service. Check your connection and try again.' });
     } finally {
       // 🎯 Turn off the loading animation regardless of success or failure
       setIsLoggingIn(false);
     }
   };
 
-  const handleLogout = () => {
-    sessionStorage.removeItem('junda_jwt');
-    setAdminToken(null);
-    setIsAuthenticated(false);
-    onAuthChange?.(false);
-  };
+  const handleLogout = () => onAuthChange(false);
 
   const handleFileUpload = async (e, formType) => {
     if (isUploading) return;
+    setMessage(null);
     const file = e.target.files[0];
+    e.target.value = '';
     if (!file) return;
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+      reportError('Choose a JPEG, PNG, WebP or GIF image up to 10 MB.');
+      return;
+    }
 
     const formData = new FormData();
     formData.append('image', file);
 
     setIsUploading(true);
     try {
-      const response = await fetch(`${API_BASE}/upload`, {
+      const response = await adminRequest('/upload', {
         method: 'POST',
-        headers: getAuthHeaders(false),
         body: formData,
       });
 
       const data = await response.json();
       if (response.ok && data.success) {
-        if (formType === 'news') setNewsForm({ ...newsForm, imageUrl: data.url });
-        if (formType === 'squad') setPlayerForm({ ...playerForm, image: data.url });
-        if (formType === 'gallery') setGalleryForm({ ...galleryForm, url: data.url });
-        alert('📸 Asset uploaded smoothly to cloud media storage!');
+        rememberGalleryUpload(uploadedMediaTypes.current, data.url, 'image');
+        if (formType === 'news') setNewsForm(current => ({ ...current, imageUrl: data.url }));
+        if (formType === 'squad') setPlayerForm(current => ({ ...current, image: data.url }));
+        if (formType === 'gallery') setGalleryForm(current => ({ ...current, url: data.url, urlType: 'image' }));
+        reportSuccess('Image uploaded. Save the form to publish it.');
       } else {
-        alert('Upload failed: ' + (data.message || 'Unknown error'));
+        reportError(data.error || data.message || 'Could not upload the image. Try again.');
       }
     } catch (err) {
       console.error(err);
-      alert('Error uploading file to server.');
+      reportError('Error uploading file to server.');
     } finally {
       setIsUploading(false);
     }
@@ -146,47 +157,46 @@ export default function Admin({
 
   const handleAddNews = async (e) => {
     e.preventDefault();
-    if (isSubmittingNews) return;
-    if (!newsForm.title || !newsForm.content) return alert('Title and Content are required!');
+    if (isSubmittingNews || isUploading) return;
+    setMessage(null);
+    if (!newsForm.title.trim() || !newsForm.content.trim()) return reportError('Title and Content are required!');
 
     setIsSubmittingNews(true);
 
     try {
       if (editingNewsId) {
         const updatePayload = { title: newsForm.title, content: newsForm.content, imageUrl: newsForm.imageUrl, date: newsForm.date };
-        const response = await fetch(`${API_BASE}/news/${editingNewsId}`, {
+        const response = await adminRequest(`/news/${editingNewsId}`, {
           method: 'PUT',
-          headers: getAuthHeaders(),
           body: JSON.stringify(updatePayload)
         });
 
         if (response.ok) {
           const updatedItem = await response.json();
-          setNews(news.map(item => item._id === editingNewsId ? updatedItem : item));
+          setNews(current => current.map(item => item._id === editingNewsId ? updatedItem : item));
           setEditingNewsId(null);
           setNewsForm({ title: '', content: '', imageUrl: '', date: '' });
-          alert('Article updated smoothly on cloud database!');
+          reportSuccess('Article updated.');
         } else {
-          alert('Failed to update: Session may have expired. Please log in again.');
+          await showRequestError(response, 'Could not update the article.');
         }
       } else {
         const newArticle = { title: newsForm.title, content: newsForm.content, imageUrl: newsForm.imageUrl, date: newsForm.date || new Date().toISOString().split('T')[0] };
-        const response = await fetch(`${API_BASE}/news`, {
+        const response = await adminRequest('/news', {
           method: 'POST',
-          headers: getAuthHeaders(),
           body: JSON.stringify(newArticle)
         });
 
         if (response.ok) {
           const savedArticle = await response.json();
-          setNews([savedArticle, ...news]);
+          setNews(current => [savedArticle, ...current]);
           setNewsForm({ title: '', content: '', imageUrl: '', date: '' });
-          alert('Article published cleanly to cloud database!');
-        }
+          reportSuccess('Article published.');
+        } else await showRequestError(response, 'Could not publish the article.');
       }
     } catch (err) {
       console.error(err);
-      alert(editingNewsId ? 'Failed to update article.' : 'Failed to save article.');
+      reportError(editingNewsId ? 'Failed to update article.' : 'Failed to save article.');
     } finally {
       setIsSubmittingNews(false);
     }
@@ -195,46 +205,45 @@ export default function Admin({
   const startEditNews = (item) => {
     setEditingNewsId(item._id);
     setNewsForm({ title: item.title, content: item.content, imageUrl: item.imageUrl || '', date: item.date });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    requestAnimationFrame(() => document.querySelector('.admin-form--editing input')?.focus());
   };
 
   const handleAddPlayer = async (e) => {
     e.preventDefault();
-    if (isSubmittingPlayer) return;
-    if (!playerForm.name || !playerForm.position) return alert('Name and Position are required!');
+    if (isSubmittingPlayer || isUploading) return;
+    setMessage(null);
+    if (!playerForm.name.trim() || !playerForm.position.trim()) return reportError('Name and Position are required!');
 
     setIsSubmittingPlayer(true);
 
     try {
       if (editingPlayerId) {
-        const response = await fetch(`${API_BASE}/players/${editingPlayerId}`, {
+        const response = await adminRequest(`/players/${editingPlayerId}`, {
           method: 'PUT',
-          headers: getAuthHeaders(),
           body: JSON.stringify(playerForm)
         });
         if (response.ok) {
           const updatedPlayer = await response.json();
-          setPlayers(players.map(p => p._id === editingPlayerId ? updatedPlayer : p));
+          setPlayers(current => current.map(p => p._id === editingPlayerId ? updatedPlayer : p));
           setEditingPlayerId(null);
           setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '', age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' });
-          alert('Squad member updated successfully!');
-        }
+          reportSuccess('Squad member updated.');
+        } else await showRequestError(response, 'Could not update the squad member.');
       } else {
-        const response = await fetch(`${API_BASE}/players`, {
+        const response = await adminRequest('/players', {
           method: 'POST',
-          headers: getAuthHeaders(),
           body: JSON.stringify(playerForm)
         });
         if (response.ok) {
           const savedPlayer = await response.json();
-          setPlayers([...players, savedPlayer]);
+          setPlayers(current => [...current, savedPlayer]);
           setPlayerForm({ name: '', position: '', jerseyNumber: '', role: 'player', image: '', age: '', squadCategory: 'First Team', appearances: 0, goals: 0, bio: '', contact: '' });
-          alert('Squad member registered successfully!');
-        }
+          reportSuccess('Squad member added.');
+        } else await showRequestError(response, 'Could not add the squad member.');
       }
     } catch (err) {
       console.error(err);
-      alert(editingPlayerId ? 'Failed to update roster member.' : 'Failed to add roster member.');
+      reportError(editingPlayerId ? 'Failed to update roster member.' : 'Failed to add roster member.');
     } finally {
       setIsSubmittingPlayer(false);
     }
@@ -247,30 +256,35 @@ export default function Admin({
       image: item.image || '', age: item.age || '', squadCategory: item.squadCategory || 'First Team',
       appearances: item.appearances || 0, goals: item.goals || 0, bio: item.bio || '', contact: item.contact || ''
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    requestAnimationFrame(() => document.querySelector('.admin-form--editing input')?.focus());
   };
 
   const handleAddGallery = async (e) => {
     e.preventDefault();
-    if (isSubmittingGallery) return;
-    if (!galleryForm.url) return alert('Media URL is required!');
+    if (isSubmittingGallery || isUploading) return;
+    setMessage(null);
+    let payload;
+    try {
+      payload = galleryPayload(galleryForm, uploadedMediaTypes.current);
+    } catch (error) {
+      return reportError(error.message);
+    }
 
     setIsSubmittingGallery(true);
     try {
-      const response = await fetch(`${API_BASE}/gallery`, {
+      const response = await adminRequest('/gallery', {
         method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(galleryForm)
+        body: JSON.stringify(payload)
       });
       if (response.ok) {
         const savedMedia = await response.json();
-        setGallery([...gallery, savedMedia]);
-        setGalleryForm({ type: 'image', url: '', caption: '' });
-        alert('Media asset uploaded successfully!');
-      }
+        setGallery(current => [...current, savedMedia]);
+        setGalleryForm(emptyGalleryDraft);
+        reportSuccess('Gallery item published.');
+      } else await showRequestError(response, 'Could not publish the gallery item.');
     } catch (err) {
       console.error(err);
-      alert('Failed to save gallery asset.');
+      reportError('Failed to save gallery asset.');
     } finally {
       setIsSubmittingGallery(false);
     }
@@ -279,29 +293,30 @@ export default function Admin({
   const handleAddFixture = async (e) => {
     e.preventDefault();
     if (isSubmittingFixture) return;
-    if (!fixtureForm.opponent || !fixtureForm.matchDate) return alert('Opponent Name and Match Date are required!');
+    setMessage(null);
+    if (!fixtureForm.opponent.trim() || !fixtureForm.matchDate || !fixtureForm.kickoffTime) return reportError('Enter an opponent, match date and kickoff time.');
     const submissionPayload = {
       ...fixtureForm,
+      ...fixtureSchedule(fixtureForm.matchDate, fixtureForm.kickoffTime),
       jundaScore: fixtureForm.status === 'Completed' ? Number(fixtureForm.jundaScore) : 0,
       opponentScore: fixtureForm.status === 'Completed' ? Number(fixtureForm.opponentScore) : 0,
     };
 
     setIsSubmittingFixture(true);
     try {
-      const response = await fetch(`${API_BASE}/fixtures`, {
+      const response = await adminRequest('/fixtures', {
         method: 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify(submissionPayload)
       });
       if (response.ok) {
         const savedFixture = await response.json();
         setFixtures(current => [savedFixture, ...current]);
-        setFixtureForm({ opponent: '', matchDate: '', kickoffTime: '16:00 EAT', venue: 'Junda Grounds, Mishomoroni', status: 'Upcoming', jundaScore: 0, opponentScore: 0, isHomeMatch: true });
-        alert('🏅 Match context logged successfully!');
-      }
+        setFixtureForm({ opponent: '', matchDate: '', kickoffTime: '16:00', venue: 'Junda Grounds, Mishomoroni', status: 'Upcoming', jundaScore: 0, opponentScore: 0, isHomeMatch: true });
+        reportSuccess('Match saved.');
+      } else await showRequestError(response, 'Could not save the match.');
     } catch (err) {
       console.error(err);
-      alert('Failed to record fixture details.');
+      reportError('Failed to record fixture details.');
     } finally {
       setIsSubmittingFixture(false);
     }
@@ -310,7 +325,8 @@ export default function Admin({
   const handleStandingSubmit = async (e) => {
     e.preventDefault();
     if (isSubmittingStanding) return;
-    if (!standingForm.name) return alert('Club Name is required!');
+    setMessage(null);
+    if (!standingForm.name) return reportError('Club Name is required!');
     const parsedForm = standingForm.formInput ? standingForm.formInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s !== "") : [];
     const payload = {
       name: standingForm.name, rank: Number(standingForm.rank) || 1, p: Number(standingForm.p) || 0,
@@ -320,14 +336,13 @@ export default function Admin({
 
     setIsSubmittingStanding(true);
     try {
-      const res = await fetch(editingStandingId ? `${API_BASE}/standings/${editingStandingId}` : `${API_BASE}/standings`, {
+      const res = await adminRequest(editingStandingId ? `/standings/${editingStandingId}` : '/standings', {
         method: editingStandingId ? 'PUT' : 'POST',
-        headers: getAuthHeaders(),
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
         const errorData = await res.json();
-        alert(`❌ DATABASE REJECTED IT:\n\n${errorData.error || errorData.message}`);
+        reportError(errorData.error || errorData.message || 'Could not save the standings row.');
         return;
       }
       const savedTeam = await res.json();
@@ -344,10 +359,10 @@ export default function Admin({
       }
       setStandingForm({ rank: 1, name: '', p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, formInput: 'W,W,D,L,W' });
       if (editingStandingId) setEditingStandingId(null);
-      alert(editingStandingId ? '✅ Standings row updated successfully!' : '✅ Standings matrix row updated smoothly!');
+      reportSuccess('Legacy standings row saved.');
     } catch (err) {
       console.error(err);
-      alert('Network error communicating with the server.');
+      reportError('Network error communicating with the server.');
     } finally {
       setIsSubmittingStanding(false);
     }
@@ -367,108 +382,71 @@ export default function Admin({
       pts: item.pts ?? 0,
       formInput: Array.isArray(item.form) ? item.form.join(',') : (item.form || '')
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    requestAnimationFrame(() => document.querySelector('.admin-form--editing input')?.focus());
   };
 
-  const deleteItem = async (id, type) => {
+  const deleteItem = async (id, type, restoreFocus) => {
     const key = `${type}:${id}`;
-    if (deletingItemKey === key) return;
+    if (deletingItemKey) return;
+    setMessage(null);
     setDeletingItemKey(key);
 
-    if (!window.confirm('Are you sure you want to delete this item permanently?')) {
-      setDeletingItemKey(null);
-      return;
-    }
-
     try {
-      const response = await fetch(`${API_BASE}/${type}/${id}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders()
+      const response = await adminRequest(`/${type}/${id}`, {
+        method: 'DELETE'
       });
       if (response.ok) {
-        if (type === 'news') { setNews(news.filter(item => item._id !== id)); if (editingNewsId === id) setEditingNewsId(null); }
-        if (type === 'players') { setPlayers(players.filter(item => item._id !== id)); if (editingPlayerId === id) setEditingPlayerId(null); }
-        if (type === 'gallery') setGallery(gallery.filter(item => item._id !== id));
-        if (type === 'fixtures') setFixtures(fixtures.filter(item => item._id !== id));
-        if (type === 'standings') { setStandings(standings.filter(item => item._id !== id)); if (editingStandingId === id) setEditingStandingId(null); }
-        alert('Item dropped successfully from database records.');
+        if (type === 'news') { setNews(current => current.filter(item => item._id !== id)); if (editingNewsId === id) setEditingNewsId(null); }
+        if (type === 'players') { setPlayers(current => current.filter(item => item._id !== id)); if (editingPlayerId === id) setEditingPlayerId(null); }
+        if (type === 'gallery') setGallery(current => current.filter(item => item._id !== id));
+        if (type === 'fixtures') setFixtures(current => current.filter(item => item._id !== id));
+        if (type === 'standings') { setStandings(current => current.filter(item => item._id !== id)); if (editingStandingId === id) setEditingStandingId(null); }
+        reportSuccess('Item deleted.');
+        restoreFocus();
       } else {
-        alert('Failed to delete: Session may have expired. Please log in again.');
+        await showRequestError(response, 'Could not delete the item.');
       }
     } catch (err) {
       console.error(err);
-      alert('Failed to drop record from backend.');
+      reportError('Failed to drop record from backend.');
     } finally {
       setDeletingItemKey(null);
     }
   };
 
-  // 🎯 UPDATE: The login form button now reacts to the `isLoggingIn` state
-  if (!isAuthenticated) {
+  if (!adminToken) {
     return (
-      <div className="page-container" style={{ maxWidth: '400px', marginTop: '5rem' }}>
+      <main className="club-admin-login">
+        <SEO title="Club administration" description="Junda United FC administration sign-in." />
         <form onSubmit={handleLogin} className="admin-form">
-          <h3>Junda UI Secure Gateway</h3>
+          <Link to="/" className="club-admin-login__back">← Return to club website</Link>
+          <img src="/junda-logo.webp" width="72" height="72" alt="" />
+          <h1>Club administration</h1>
+          <p>Sign in to manage the Junda United FC website.</p>
+          <Feedback message={loginMessage} />
           <div className="form-group">
             <label htmlFor="admin-login-username">Username</label>
-            <input id="admin-login-username" type="text" placeholder="Username" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} disabled={isLoggingIn} />
+            <input id="admin-login-username" name="username" autoComplete="username" required value={usernameInput} onChange={e => setUsernameInput(e.target.value)} disabled={isLoggingIn} />
           </div>
           <div className="form-group">
-            <label htmlFor="admin-login-password">Security Password</label>
-            <div className="password-input-wrapper">
-              <input id="admin-login-password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} disabled={isLoggingIn} onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e); }} />
-              <button type="button" className="toggle-password-btn" onClick={() => setShowPassword(!showPassword)} disabled={isLoggingIn}>
-                {showPassword ? "Hide" : "Show"}
-              </button>
+            <label htmlFor="admin-login-password">Password</label>
+            <div className="club-password">
+              <input id="admin-login-password" name="password" autoComplete="current-password" required type={showPassword ? 'text' : 'password'} value={passwordInput} onChange={e => setPasswordInput(e.target.value)} disabled={isLoggingIn} />
+              <button type="button" className="edit-btn" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword(current => !current)}>{showPassword ? 'Hide' : 'Show'}</button>
             </div>
           </div>
-          <button
-            type="submit"
-            className="submit-btn"
-            disabled={isLoggingIn}
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '0.5rem',
-              opacity: isLoggingIn ? 0.7 : 1,
-              cursor: isLoggingIn ? 'not-allowed' : 'pointer'
-            }}
-          >
-            {isLoggingIn ? (
-              <>
-                {/* 🎯 Sleek inline SVG loading spinner */}
-                <svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-                  <style>{`
-                    .spinner_S1WN{animation:spinner_MgQ0 1.2s linear infinite;transform-origin:center}
-                    .spinner_b2T7{animation-delay:-.1s}
-                    .spinner_YRVV{animation-delay:-.2s}
-                    @keyframes spinner_MgQ0{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-                  `}</style>
-                  <g className="spinner_S1WN">
-                    <circle cx="12" cy="2.5" r="2.5" opacity=".8"/>
-                    <circle cx="16.75" cy="3.77" r="1.5" opacity=".6"/>
-                    <circle cx="20.23" cy="7.25" r="1.5" opacity=".4"/>
-                    <circle cx="21.50" cy="12.00" r="1.5" opacity=".2"/>
-                    <circle cx="20.23" cy="16.75" r="1.5" opacity=".1"/>
-                  </g>
-                </svg>
-                Verifying Credentials...
-              </>
-            ) : (
-              "Unlock Dashboard"
-            )}
-          </button>
+          <button type="submit" className="submit-btn" disabled={isLoggingIn}>{isLoggingIn ? 'Signing in…' : 'Sign in'}</button>
         </form>
-      </div>
+      </main>
     );
   }
 
   // Determine section title and description based on activeTab
   const sectionConfigs = {
+    overview: { title: 'Club overview', description: 'Manage club content, match schedules and results.' },
     news: { title: 'Manage News', description: 'Create, update and remove club articles in real-time.' },
     fixtures: { title: 'Manage Fixtures', description: 'Log and track match schedules and results.' },
-    standings: { title: 'Manage Standings', description: 'Update league table positions and team statistics.' },
+    standings: { title: 'Manage Standings', description: 'Manage competition tables and enter team statistics.' },
     squad: { title: 'Manage Squad', description: 'Handle player registrations, staff records and team roster.' },
     gallery: { title: 'Manage Gallery', description: 'Upload and organize media assets for club communications.' }
   };
@@ -477,7 +455,14 @@ export default function Admin({
 
   const handleSelectSection = (tab) => {
     setActiveTab(tab);
-    setIsSidebarOpen(false);
+    setMessage(null);
+  };
+
+  const confirmDelete = (item, type, trigger) => {
+    if (deletingItemKey) return;
+    const name = item.title || item.name || item.opponent || item.caption || 'this media item';
+    const restoreFocus = afterRecordDeletion(trigger);
+    setDeletion({ question: `Permanently delete ${name}?`, run: () => deleteItem(item._id, type, restoreFocus) });
   };
 
   const isDeleting = (type, id) => deletingItemKey === `${type}:${id}`;
@@ -498,12 +483,20 @@ export default function Admin({
     if (status === 'error') {
       return <div className="admin-list__state admin-list__state--error">⚠️ Unable to load {label}. Use “Try again” above.</div>;
     }
-    return <div className="admin-list__state">{emptyMessage}</div>;
+    return <div className="admin-list__state">
+      <p>{emptyMessage}</p>
+      <button type="button" className="edit-btn" onClick={event => event.currentTarget.closest('.admin-panel')?.querySelector('form input')?.focus()}>
+        Go to entry form
+      </button>
+    </div>;
   };
 
   const loadingCollections = Object.entries(collectionStatuses || {})
     .filter(([, status]) => status === 'loading')
     .map(([collection]) => collection);
+  const shownNews = news.filter(item => item.title?.toLowerCase().includes(newsQuery.trim().toLowerCase()));
+  const shownSquad = players.filter(item => [item.name, item.position, item.squadCategory, item.role === 'coach' ? 'staff' : 'player']
+    .some(value => value?.toLowerCase().includes(squadQuery.trim().toLowerCase())));
   const failedCollections = Object.entries(collectionStatuses || {})
     .filter(([, status]) => status === 'error')
     .map(([collection]) => collection);
@@ -514,32 +507,23 @@ export default function Admin({
       sectionDescription={sectionDescription}
       activeTab={activeTab}
       onSelectSection={handleSelectSection}
-      onSidebarToggle={() => setIsSidebarOpen(open => !open)}
-      isSidebarOpen={isSidebarOpen}
-      setIsSidebarOpen={setIsSidebarOpen}
+      onLogout={handleLogout}
     >
-      <div className="page-container">
-        <header className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h2>Admin Management Dashboard</h2>
-            <p>Create, update and remove club assets in real-time.</p>
-          </div>
-          <button type="button" onClick={handleLogout} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-            Log Out
-          </button>
-        </header>
-
-        <div className="admin-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-          <button type="button" className={activeTab === 'news' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('news')}>Manage News</button>
-          <button type="button" className={activeTab === 'fixtures' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('fixtures')}>Manage Fixtures</button>
-          <button type="button" className={activeTab === 'standings' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('standings')}>Manage Standings</button>
-          <button type="button" className={activeTab === 'squad' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('squad')}>Manage Squad</button>
-          <button type="button" className={activeTab === 'gallery' ? 'tab-btn active' : 'tab-btn'} onClick={() => setActiveTab('gallery')}>Manage Gallery</button>
-        </div>
+      <div className="club-admin-content">
+        <SEO title={sectionTitle} description={sectionDescription} />
+        <DeleteDialog request={deletion} onCancel={() => setDeletion(null)} />
+        <Feedback message={message} />
+        {activeTab === 'overview' && (
+          <AdminOverview onSelect={handleSelectSection} fixtures={fixtures} fixtureStatus={statusOf('fixtures')}
+            collections={Object.fromEntries([
+              ['news', 'news', news], ['fixtures', 'fixtures', fixtures], ['standings', 'standingsTables', standingsTables],
+              ['squad', 'players', players], ['gallery', 'gallery', gallery]
+            ].map(([section, collection, rows]) => [section, statusOf(collection) === 'success' ? rows.length : undefined]))} />
+        )}
 
         {isUploading && (
-          <div className="admin-feedback admin-feedback--loading">
-            <span className="btn-spinner" aria-hidden="true" />Processing file upload to Cloudinary storage stream...
+          <div className="admin-feedback admin-feedback--loading" role="status">
+            <span className="btn-spinner" aria-hidden="true" />Uploading image…
           </div>
         )}
 
@@ -566,27 +550,29 @@ export default function Admin({
           <div className="admin-panel admin-panel--stacked">
             <form onSubmit={handleAddNews} className={`admin-form${editingNewsId ? ' admin-form--editing' : ''}`}>
               <h3>{editingNewsId ? "📝 Edit Article" : "Post New Article"}</h3>
-              <div className="form-group"><label htmlFor="admin-news-title">Article Title</label><input id="admin-news-title" type="text" placeholder="e.g. Match Victory!" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} /></div>
-              <div className="form-group"><label htmlFor="admin-news-image">Cover Image</label><input id="admin-news-image" type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'news')} /></div>
+              <div className="form-group"><label htmlFor="admin-news-title">Article Title</label><input id="admin-news-title" required type="text" placeholder="e.g. Match Victory!" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} /></div>
+              <div className="form-group"><label htmlFor="admin-news-image">Cover Image</label><input id="admin-news-image" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={isUploading} onChange={e => handleFileUpload(e, 'news')} /></div>
               <div className="form-group"><label htmlFor="admin-news-date">Publish Date (Optional)</label><input id="admin-news-date" type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} /></div>
-              <div className="form-group"><label htmlFor="admin-news-content">Article Content</label><textarea id="admin-news-content" placeholder="Write article text here..." rows="4" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea></div>
-              <button type="submit" className="submit-btn" disabled={isSubmittingNews}>{asyncButtonContent(isSubmittingNews, editingNewsId ? "Saving..." : "Publishing...", editingNewsId ? "Save Changes" : "Publish Post")}</button>
+              <div className="form-group"><label htmlFor="admin-news-content">Article Content</label><textarea id="admin-news-content" required placeholder="Write article text here..." rows="4" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea></div>
+              <button type="submit" className="submit-btn" disabled={isSubmittingNews || isUploading}>{asyncButtonContent(isSubmittingNews, editingNewsId ? "Saving..." : "Publishing...", editingNewsId ? "Save Changes" : "Publish Post")}</button>
               {editingNewsId && (
                 <button type="button" className="cancel-btn" onClick={() => { setEditingNewsId(null); setNewsForm({ title: '', content: '', imageUrl: '', date: '' }); }}>Cancel Edit</button>
               )}
             </form>
 
             <div className="admin-list">
-              <h3 className="admin-list__header">Current Articles ({news.length})</h3>
-              {news.map(item => (
+              <h3 className="admin-list__header" tabIndex={-1}>Current Articles ({news.length})</h3>
+              {news.length > 0 && <RecordSearch id="news-search" label="Search articles" query={newsQuery} onChange={setNewsQuery} />}
+              {news.length > 0 && shownNews.length === 0 && <p className="admin-list__state" role="status">No articles match your search.</p>}
+              {shownNews.map(item => (
                 <div key={item._id} className="admin-list__row">
                   <div className="admin-list__info">
                     <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.title}</strong>
                     <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.date}</p>
                   </div>
                   <div className="admin-row-actions">
-                    <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditNews(item)}>Edit</button>
-                    <button type="button" className="delete-btn" disabled={isDeleting('news', item._id)} onClick={() => deleteItem(item._id, 'news')}>{asyncButtonContent(isDeleting('news', item._id), "Deleting...", "Delete")}</button>
+                    <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditNews(item)}><Pencil size={16} aria-hidden="true" /> Edit</button>
+                    <button type="button" className="delete-btn" disabled={isDeleting('news', item._id)} onClick={event => confirmDelete(item, 'news', event.currentTarget)}>{asyncButtonContent(isDeleting('news', item._id), "Deleting…", <><Trash2 size={16} aria-hidden="true" /> Delete</>)}</button>
                   </div>
                 </div>
                 ))}
@@ -599,34 +585,34 @@ export default function Admin({
         {activeTab === 'fixtures' && (
           <div className="admin-panel admin-panel--stacked">
             <form onSubmit={handleAddFixture} className="admin-form">
-              <h3>Log New Match Fixture</h3>
-              <div className="form-group"><label htmlFor="admin-fixture-opponent">Opponent Team Name</label><input id="admin-fixture-opponent" type="text" placeholder="e.g. Black Dragon FC" value={fixtureForm.opponent} onChange={e => setFixtureForm({...fixtureForm, opponent: e.target.value})} /></div>
+              <h3>Add a match</h3>
+              <div className="form-group"><label htmlFor="admin-fixture-opponent">Opponent Team Name</label><input id="admin-fixture-opponent" required type="text" placeholder="e.g. Black Dragon FC" value={fixtureForm.opponent} onChange={e => setFixtureForm({...fixtureForm, opponent: e.target.value})} /></div>
               <div className="form-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                <div style={{ flex: '1 1 150px' }}><label htmlFor="admin-fixture-date">Match Date</label><input id="admin-fixture-date" type="text" placeholder="e.g. 18/07/2026" value={fixtureForm.matchDate} onChange={e => setFixtureForm({...fixtureForm, matchDate: e.target.value})} /></div>
-                <div style={{ flex: '1 1 150px' }}><label htmlFor="admin-fixture-time">Kickoff Time</label><input id="admin-fixture-time" type="text" value={fixtureForm.kickoffTime} onChange={e => setFixtureForm({...fixtureForm, kickoffTime: e.target.value})} /></div>
+                <div style={{ flex: '1 1 150px' }}><label htmlFor="admin-fixture-date">Match Date</label><input id="admin-fixture-date" type="date" required value={fixtureForm.matchDate} onChange={e => setFixtureForm({...fixtureForm, matchDate: e.target.value})} /></div>
+                <div style={{ flex: '1 1 150px' }}><label htmlFor="admin-fixture-time">Kickoff time (EAT)</label><input id="admin-fixture-time" type="time" required value={fixtureForm.kickoffTime} onChange={e => setFixtureForm({...fixtureForm, kickoffTime: e.target.value})} /></div>
               </div>
               <div className="form-group"><label htmlFor="admin-fixture-venue">Stadium Venue</label><input id="admin-fixture-venue" type="text" value={fixtureForm.venue} onChange={e => setFixtureForm({...fixtureForm, venue: e.target.value})} /></div>
-              <div className="form-group" style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px' }}><label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}><input type="checkbox" checked={fixtureForm.isHomeMatch} onChange={e => setFixtureForm({...fixtureForm, isHomeMatch: e.target.checked})} />🏠 Home Match</label></div>
-              <div className="form-group"><label htmlFor="admin-fixture-status">Match Progress Status</label><select id="admin-fixture-status" value={fixtureForm.status} onChange={e => setFixtureForm({...fixtureForm, status: e.target.value})}><option value="Upcoming">🗓️ Upcoming Match</option><option value="Completed">🏆 Completed</option></select></div>
+              <div className="form-group" style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px' }}><label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}><input type="checkbox" checked={fixtureForm.isHomeMatch} onChange={e => setFixtureForm({...fixtureForm, isHomeMatch: e.target.checked})} />Home match</label></div>
+              <div className="form-group"><label htmlFor="admin-fixture-status">Match Progress Status</label><select id="admin-fixture-status" value={fixtureForm.status} onChange={e => setFixtureForm({...fixtureForm, status: e.target.value})}><option value="Upcoming">Upcoming</option><option value="Completed">Completed</option></select></div>
               {fixtureForm.status === 'Completed' && (
                 <div className="form-group" style={{ display: 'flex', gap: '1rem', background: '#f0fdf4', padding: '1rem', borderRadius: '8px' }}>
-                  <div><label htmlFor="admin-fixture-junda">Junda Score</label><input id="admin-fixture-junda" type="number" min="0" value={fixtureForm.jundaScore} onChange={e => setFixtureForm({...fixtureForm, jundaScore: e.target.value})} style={{ width: '70px' }} /></div>
+                  <div><label htmlFor="admin-fixture-junda">Junda Score</label><input id="admin-fixture-junda" type="number" min="0" step="any" value={fixtureForm.jundaScore} onChange={e => setFixtureForm({...fixtureForm, jundaScore: e.target.value})} style={{ width: '70px' }} /></div>
                   <div style={{ fontWeight: 'bold', alignSelf: 'center', marginTop: '1rem' }}>VS</div>
-                  <div><label htmlFor="admin-fixture-opp-score">Opponent Score</label><input id="admin-fixture-opp-score" type="number" min="0" value={fixtureForm.opponentScore} onChange={e => setFixtureForm({...fixtureForm, opponentScore: e.target.value})} style={{ width: '70px' }} /></div>
+                  <div><label htmlFor="admin-fixture-opp-score">Opponent Score</label><input id="admin-fixture-opp-score" type="number" min="0" step="any" value={fixtureForm.opponentScore} onChange={e => setFixtureForm({...fixtureForm, opponentScore: e.target.value})} style={{ width: '70px' }} /></div>
                 </div>
               )}
               <button type="submit" className="submit-btn" disabled={isSubmittingFixture}>{asyncButtonContent(isSubmittingFixture, "Saving...", "Save Match Entry")}</button>
             </form>
 
             <div className="admin-list">
-              <h3 className="admin-list__header">Active Match Logs ({fixtures?.length || 0})</h3>
+              <h3 className="admin-list__header" tabIndex={-1}>Active Match Logs ({fixtures?.length || 0})</h3>
               {(fixtures || []).map(item => (
                 <div key={item._id} className="admin-list__row">
                   <div className="admin-list__info">
                     <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>Junda United vs {item.opponent}</strong>
                     <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>{item.matchDate} • {item.status === 'Completed' ? `Score: ${item.jundaScore}-${item.opponentScore}` : 'Upcoming'}</p>
                   </div>
-                  <button type="button" className="delete-btn" disabled={isDeleting('fixtures', item._id)} onClick={() => deleteItem(item._id, 'fixtures')}>{asyncButtonContent(isDeleting('fixtures', item._id), "Deleting...", "Delete")}</button>
+                  <button type="button" className="delete-btn" disabled={isDeleting('fixtures', item._id)} onClick={event => confirmDelete(item, 'fixtures', event.currentTarget)}>{asyncButtonContent(isDeleting('fixtures', item._id), "Deleting…", <><Trash2 size={16} aria-hidden="true" /> Delete</>)}</button>
                 </div>
               ))}
               {(!fixtures || fixtures.length === 0) && renderListState(statusOf('fixtures'), 'fixtures', 'No fixtures logged yet.')}
@@ -638,16 +624,17 @@ export default function Admin({
         {activeTab === 'standings' && (
           <div className="admin-panel admin-panel--stacked">
             <div className="admin-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-              <button type="button" className={standingsSubview === 'legacy' ? 'tab-btn active' : 'tab-btn'} onClick={() => setStandingsSubview('legacy')}>Singular Standings</button>
-              <button type="button" className={standingsSubview === 'tables' ? 'tab-btn active' : 'tab-btn'} onClick={() => setStandingsSubview('tables')}>Standings Tables</button>
+              <button type="button" className={standingsSubview === 'legacy' ? 'tab-btn active' : 'tab-btn'} onClick={() => setStandingsSubview('legacy')} aria-pressed={standingsSubview === 'legacy'}>Legacy standings</button>
+              <button type="button" className={standingsSubview === 'tables' ? 'tab-btn active' : 'tab-btn'} onClick={() => setStandingsSubview('tables')} aria-pressed={standingsSubview === 'tables'}>Standings tables</button>
             </div>
 
             {standingsSubview === 'legacy' && (
             <>
+            <p className="admin-field-note">The legacy table retains stored positions. Standings tables calculate position from points, goal difference and goals scored.</p>
             <form onSubmit={handleStandingSubmit} className={`admin-form${editingStandingId ? ' admin-form--editing' : ''}`}>
               <h3>{editingStandingId ? "📝 Edit Standings Row" : "📊 Update League Standings Table"}</h3>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="admin-stand-rank">Pos (Rank)</label><input id="admin-stand-rank" type="number" min="1" value={standingForm.rank} onChange={e => setStandingForm({...standingForm, rank: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="admin-stand-rank">Stored position (legacy table)</label><input id="admin-stand-rank" type="number" min="1" value={standingForm.rank} onChange={e => setStandingForm({...standingForm, rank: e.target.value})} /></div>
                 <div className="form-group" style={{ flex: '2 1 200px' }}><label htmlFor="admin-stand-name">Club Name</label><input id="admin-stand-name" type="text" placeholder="e.g. Junda United FC" value={standingForm.name} onChange={e => setStandingForm({...standingForm, name: e.target.value})} required /></div>
               </div>
 
@@ -681,7 +668,7 @@ export default function Admin({
             </form>
 
             <div className="admin-list">
-              <h3 className="admin-list__header">Active League Table Rows ({standings?.length || 0})</h3>
+              <h3 className="admin-list__header" tabIndex={-1}>Active League Table Rows ({standings?.length || 0})</h3>
               {(standings || []).map(team => (
                 <div key={team._id} className="admin-list__row">
                   <div className="admin-list__info">
@@ -689,8 +676,8 @@ export default function Admin({
                     <p className="subtext" style={{ marginTop: '0.35rem', color: '#475569' }}>Points: <span style={{ fontWeight: 'bold', color: '#166534' }}>{team.pts}</span> • Record: P {team.p} W {team.w} D {team.d} L {team.l}</p>
                   </div>
                   <div className="admin-row-actions">
-                    <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditStanding(team)}>Edit</button>
-                    <button type="button" className="delete-btn" disabled={isDeleting('standings', team._id)} onClick={() => deleteItem(team._id, 'standings')}>{asyncButtonContent(isDeleting('standings', team._id), "Deleting...", "Delete")}</button>
+                    <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditStanding(team)}><Pencil size={16} aria-hidden="true" /> Edit</button>
+                    <button type="button" className="delete-btn" disabled={isDeleting('standings', team._id)} onClick={event => confirmDelete(team, 'standings', event.currentTarget)}>{asyncButtonContent(isDeleting('standings', team._id), "Deleting…", <><Trash2 size={16} aria-hidden="true" /> Delete</>)}</button>
                   </div>
                 </div>
               ))}
@@ -704,10 +691,8 @@ export default function Admin({
                 standingsTables={standingsTables}
                 standingsTablesStatus={standingsTablesStatus}
                 setStandingsTables={setStandingsTables}
-                API_BASE={API_BASE}
-                getAuthHeaders={adminAuthHeaders}
+                adminRequest={adminRequest}
                 onRetryData={onRetryData}
-                onAuthChange={onAuthChange}
               />
             )}
           </div>
@@ -720,15 +705,15 @@ export default function Admin({
               <h3>{editingPlayerId ? "📝 Edit Roster Member" : "Add Roster Member"}</h3>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                <div className="form-group" style={{ flex: '2 1 200px' }}><label htmlFor="admin-squad-name">Full Name</label><input id="admin-squad-name" type="text" placeholder="e.g. Marcus Vance" value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} /></div>
-                <div className="form-group" style={{ flex: '1 1 150px' }}><label htmlFor="admin-squad-position">Position</label><input id="admin-squad-position" type="text" placeholder="e.g. Striker" value={playerForm.position} onChange={e => setPlayerForm({...playerForm, position: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '2 1 200px' }}><label htmlFor="admin-squad-name">Full Name</label><input id="admin-squad-name" required type="text" placeholder="e.g. Marcus Vance" value={playerForm.name} onChange={e => setPlayerForm({...playerForm, name: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '1 1 150px' }}><label htmlFor="admin-squad-position">Position</label><input id="admin-squad-position" required type="text" placeholder="e.g. Striker" value={playerForm.position} onChange={e => setPlayerForm({...playerForm, position: e.target.value})} /></div>
               </div>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
                 <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="admin-squad-jersey">Jersey #</label><input id="admin-squad-jersey" type="text" placeholder="e.g. 10" value={playerForm.jerseyNumber} onChange={e => setPlayerForm({...playerForm, jerseyNumber: e.target.value})} /></div>
-                <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="admin-squad-age">Age</label><input id="admin-squad-age" type="number" placeholder="e.g. 21" value={playerForm.age} onChange={e => setPlayerForm({...playerForm, age: e.target.value})} /></div>
-                <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="admin-squad-apps">Apps</label><input id="admin-squad-apps" type="number" value={playerForm.appearances} onChange={e => setPlayerForm({...playerForm, appearances: e.target.value})} /></div>
-                <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="admin-squad-goals">Goals</label><input id="admin-squad-goals" type="number" value={playerForm.goals} onChange={e => setPlayerForm({...playerForm, goals: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="admin-squad-age">Age</label><input id="admin-squad-age" type="number" min="0" step="any" placeholder="e.g. 21" value={playerForm.age} onChange={e => setPlayerForm({...playerForm, age: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="admin-squad-apps">Apps</label><input id="admin-squad-apps" type="number" min="0" step="any" value={playerForm.appearances} onChange={e => setPlayerForm({...playerForm, appearances: e.target.value})} /></div>
+                <div className="form-group" style={{ flex: '1 1 100px' }}><label htmlFor="admin-squad-goals">Goals</label><input id="admin-squad-goals" type="number" min="0" step="any" value={playerForm.goals} onChange={e => setPlayerForm({...playerForm, goals: e.target.value})} /></div>
               </div>
 
               <div className="form-group"><label htmlFor="admin-squad-bio">Short Bio</label><textarea id="admin-squad-bio" rows="2" placeholder="Brief player history..." value={playerForm.bio} onChange={e => setPlayerForm({...playerForm, bio: e.target.value})}></textarea></div>
@@ -748,13 +733,13 @@ export default function Admin({
                     <option value="coach">Coach / Staff</option>
                   </select>
                 </div>
-                <div className="form-group" style={{ flex: '1 1 200px' }}><label htmlFor="admin-squad-photo">Profile Photo</label><input id="admin-squad-photo" type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'squad')} /></div>
+                <div className="form-group" style={{ flex: '1 1 200px' }}><label htmlFor="admin-squad-photo">Profile Photo</label><input id="admin-squad-photo" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={isUploading} onChange={e => handleFileUpload(e, 'squad')} /></div>
               </div>
 
               <button
                 type="submit"
                 className="submit-btn submit-btn--primary"
-                disabled={isSubmittingPlayer}
+                disabled={isSubmittingPlayer || isUploading}
               >
                 {asyncButtonContent(isSubmittingPlayer, editingPlayerId ? "Saving..." : "Registering...", editingPlayerId ? "💾 Save Changes" : "➕ Register to Roster")}
               </button>
@@ -770,8 +755,10 @@ export default function Admin({
             </form>
 
             <div className="admin-list">
-              <h3 className="admin-list__header">Current Roster ({players.length})</h3>
-              {players.map(item => (
+              <h3 className="admin-list__header" tabIndex={-1}>Current Roster ({players.length})</h3>
+              {players.length > 0 && <RecordSearch id="squad-search" label="Search squad members" query={squadQuery} onChange={setSquadQuery} />}
+              {players.length > 0 && shownSquad.length === 0 && <p className="admin-list__state" role="status">No squad members match your search.</p>}
+              {shownSquad.map(item => (
                 <div key={item._id} className="admin-list__row">
                   <div className="admin-list__info">
                     <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.name}</strong>
@@ -780,8 +767,8 @@ export default function Admin({
                     </p>
                   </div>
                   <div className="admin-row-actions">
-                    <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditPlayer(item)}>Edit</button>
-                    <button type="button" className="delete-btn" disabled={isDeleting('players', item._id)} onClick={() => deleteItem(item._id, 'players')}>{asyncButtonContent(isDeleting('players', item._id), "Deleting...", "Delete")}</button>
+                    <button type="button" className="tab-btn tab-btn--compact" onClick={() => startEditPlayer(item)}><Pencil size={16} aria-hidden="true" /> Edit</button>
+                    <button type="button" className="delete-btn" disabled={isDeleting('players', item._id)} onClick={event => confirmDelete(item, 'players', event.currentTarget)}>{asyncButtonContent(isDeleting('players', item._id), "Deleting…", <><Trash2 size={16} aria-hidden="true" /> Delete</>)}</button>
                   </div>
                 </div>
                 ))}
@@ -794,22 +781,31 @@ export default function Admin({
         {activeTab === 'gallery' && (
           <div className="admin-panel admin-panel--stacked">
             <form onSubmit={handleAddGallery} className="admin-form">
-              <h3>Upload Media Item</h3>
-              <div className="form-group"><label htmlFor="admin-gallery-file">Select Media File</label><input id="admin-gallery-file" type="file" accept="image/*" disabled={isUploading} onChange={e => handleFileUpload(e, 'gallery')} /></div>
+              <h3>Add gallery media</h3>
+              <div className="form-group"><label htmlFor="admin-gallery-file"><Upload size={16} aria-hidden="true" /> Upload an image</label><input id="admin-gallery-file" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={isUploading || galleryForm.type === 'video'} onChange={e => handleFileUpload(e, 'gallery')} /></div>
               <div className="form-group"><label htmlFor="admin-gallery-caption">Description / Caption</label><input id="admin-gallery-caption" type="text" placeholder="Highlights" value={galleryForm.caption} onChange={e => setGalleryForm({...galleryForm, caption: e.target.value})} /></div>
-              <div className="form-group"><label htmlFor="admin-gallery-type">Media Type</label><select id="admin-gallery-type" value={galleryForm.type} onChange={e => setGalleryForm({...galleryForm, type: e.target.value})}><option value="image">Photo Upload</option><option value="video">Video Loop</option></select></div>
-              <button type="submit" className="submit-btn" disabled={isSubmittingGallery}>{asyncButtonContent(isSubmittingGallery, "Saving...", "Add to Gallery")}</button>
+              <div className="form-group"><label htmlFor="admin-gallery-type">Media Type</label><select id="admin-gallery-type" value={galleryForm.type} disabled={isUploading} onChange={e => {
+                setGalleryForm(changeGalleryType(galleryForm, e.target.value));
+                setMessage(null);
+              }}><option value="image">Image</option><option value="video">Video</option></select></div>
+              <div className="form-group">
+                <label htmlFor="admin-gallery-url">Published media URL</label>
+                <input id="admin-gallery-url" type="url" required aria-describedby="gallery-url-hint" value={galleryForm.url}
+                  disabled={isUploading} onChange={e => setGalleryForm({ ...galleryForm, url: e.target.value, urlType: galleryForm.type })} />
+                <small id="gallery-url-hint">{galleryForm.type === 'video' ? 'Paste a direct link to the hosted video file.' : 'Upload an image to fill this in, or paste a direct link to an image.'}</small>
+              </div>
+              <button type="submit" className="submit-btn" disabled={isSubmittingGallery || isUploading}>{asyncButtonContent(isSubmittingGallery, "Saving...", "Add to Gallery")}</button>
             </form>
 
             <div className="admin-list">
-              <h3 className="admin-list__header">Current Assets ({gallery.length})</h3>
+              <h3 className="admin-list__header" tabIndex={-1}>Current Assets ({gallery.length})</h3>
               {gallery.map(item => (
                 <div key={item._id} className="admin-list__row">
                   <div className="admin-list__info">
                     <strong style={{ fontSize: '1.1rem', color: '#0f172a' }}>{item.caption || "Untitled"}</strong>
                     <p className="subtext type-tag" style={{ marginTop: '0.35rem', display: 'inline-block' }}>{item.type}</p>
                   </div>
-                  <button type="button" className="delete-btn" disabled={isDeleting('gallery', item._id)} onClick={() => deleteItem(item._id, 'gallery')}>{asyncButtonContent(isDeleting('gallery', item._id), "Deleting...", "Delete")}</button>
+                  <button type="button" className="delete-btn" disabled={isDeleting('gallery', item._id)} onClick={event => confirmDelete(item, 'gallery', event.currentTarget)}>{asyncButtonContent(isDeleting('gallery', item._id), "Deleting…", <><Trash2 size={16} aria-hidden="true" /> Delete</>)}</button>
                 </div>
               ))}
               {gallery.length === 0 && renderListState(statusOf('gallery'), 'media items', 'No media uploaded yet.')}

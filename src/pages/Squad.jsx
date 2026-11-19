@@ -1,3 +1,4 @@
+import PublicHero from '../components/ui/PublicHero';
 import React from 'react';
 import { Link } from 'react-router-dom';
 import SEO from '../components/SEO';
@@ -5,7 +6,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { fetchJson } from '../api';
 import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
 
-const placeholderImg = 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=300&auto=format&fit=crop';
+const placeholderImg = '/junda-logo.webp';
 
 function hasValue(value) {
   return value !== undefined && value !== null && value !== '';
@@ -206,11 +207,7 @@ export default function Squad() {
       />
 
       <main className="public-container public-squad__container">
-        <header className="public-squad__header public-glass">
-          <span className="public-squad__eyebrow">Junda United FC</span>
-          <h1>Club roster</h1>
-          <p>Meet the players, academy prospects, and technical staff representing Junda United FC.</p>
-        </header>
+        <PublicHero title="Club roster" description="Meet the players and staff across Junda United FC and its academy." />
 
         <section className="public-squad__players" aria-labelledby="players-heading">
           <div className="public-squad__section-heading-row">
@@ -269,7 +266,7 @@ export default function Squad() {
 
 function PageMessage({ message, onRetry }) {
   return (
-    <div className="public-ui public-squad public-squad__state-page">
+    <main className="public-ui public-squad public-squad__state-page">
       <div className="public-container">
         <section className="public-squad__state public-glass" role={onRetry ? 'alert' : 'status'}>
           <span className="public-squad__eyebrow">Junda United FC Squad</span>
@@ -281,6 +278,6 @@ function PageMessage({ message, onRetry }) {
           )}
         </section>
       </div>
-    </div>
+    </main>
   );
 }

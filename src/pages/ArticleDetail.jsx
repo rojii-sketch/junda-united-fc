@@ -1,3 +1,4 @@
+import { Link2 } from 'lucide-react';
 import { useParams, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import SEO from '../components/SEO';
@@ -84,17 +85,18 @@ export default function ArticleDetail() {
           url: articleUrl,
         });
         setShareStatus('Article shared.');
+        return;
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          setShareStatus('Unable to share this article.');
-        }
+        if (error.name === 'AbortError') return;
       }
-      return;
     }
 
-    const message = `Check out this update from Junda United FC!\n\n${article.title}\n${articleUrl}`;
-    const shareWindow = window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
-    setShareStatus(shareWindow ? 'Opening WhatsApp to share this article.' : 'Unable to open sharing options.');
+    try {
+      await navigator.clipboard.writeText(articleUrl);
+      setShareStatus('Article link copied.');
+    } catch {
+      setShareStatus('Could not copy the link. Use the address bar or share on WhatsApp.');
+    }
   };
 
   return (
@@ -138,11 +140,15 @@ export default function ArticleDetail() {
           )}
 
           <div className="public-article__body">
-            <div className="public-article__content">{article.content}</div>
+            <div className="public-article__content">{(article.content || '').split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div>
             <div className="public-article__actions">
               <button type="button" className="public-article__share" onClick={handleShare}>
-                <span aria-hidden="true">🔗</span> Share article
+                <Link2 size={18} aria-hidden="true" /> Share article
               </button>
+              <a className="public-article__share" target="_blank" rel="noopener noreferrer"
+                href={`https://wa.me/?text=${encodeURIComponent(article.title + '\n' + window.location.href)}`}>
+                Share on WhatsApp
+              </a>
               {shareStatus && (
                 <span className="public-article__share-status" role="status">
                   {shareStatus}
@@ -188,7 +194,7 @@ function getDateTimeValue(value) {
 
 function DetailMessage({ message, onRetry }) {
   return (
-    <div className="public-ui public-article public-article__state-page">
+    <main className="public-ui public-article public-article__state-page">
       <div className="public-container">
         <section className="public-article__state public-glass" aria-live={onRetry ? 'assertive' : 'polite'}>
           <span className="public-article__eyebrow">Junda United FC News</span>
@@ -200,6 +206,6 @@ function DetailMessage({ message, onRetry }) {
           )}
         </section>
       </div>
-    </div>
+    </main>
   );
 }

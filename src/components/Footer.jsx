@@ -1,5 +1,5 @@
 // src/components/Footer.jsx
-import React from 'react';
+import { Mail, MapPin, Phone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Footer() {
@@ -10,6 +10,7 @@ export default function Footer() {
       <div className="public-footer__inner">
         {/* Brand Column */}
         <div className="public-footer__column public-footer__brand">
+          <img src="/junda-logo.webp" alt="" width="52" height="52" />
           <h3>Junda United FC</h3>
           <p>
             Pride of Mishomoroni. Forging talent, discipline, and community spirit on and off the pitch.
@@ -47,9 +48,9 @@ export default function Footer() {
         <div className="public-footer__column">
           <h4>Contact Us</h4>
           <ul className="public-footer__contact">
-            <li>📍 Junda Grounds, Mishomoroni</li>
-            <li>📧 jundaunited6@gmail.com</li>
-            <li>📞 +254 798 924 762</li>
+            <li><MapPin size={17} aria-hidden="true" /> Junda Grounds, Mishomoroni</li>
+            <li><Mail size={17} aria-hidden="true" /> <a href="mailto:jundaunited6@gmail.com">jundaunited6@gmail.com</a></li>
+            <li><Phone size={17} aria-hidden="true" /> <a href="tel:+254798924762">+254 798 924 762</a></li>
           </ul>
         </div>
 

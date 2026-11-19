@@ -2043,6 +2043,16 @@
     width: 100%;
     margin-inline: auto;
   }
+
+  .public-player-profile__image-card--placeholder {
+    aspect-ratio: auto;
+    height: 8rem;
+  }
+
+  .public-player-profile__image-card--placeholder img {
+    object-fit: contain;
+    object-position: center;
+  }
 }
 
 @media (max-width: 639px) {
@@ -2587,7 +2597,7 @@
 .public-footer {
   background: var(--junda-navy-900);
   color: var(--junda-text-primary);
-  margin-top: var(--junda-space-24);
+  padding-block-start: var(--junda-space-24);
 }
 
 .public-footer__inner {

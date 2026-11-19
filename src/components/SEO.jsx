@@ -4,7 +4,7 @@ export default function SEO({ title, description, image, name = "Junda United FC
   return (
     <Helmet>
       {/* 1. Standard metadata tags */}
-      <title>{title} | {name}</title>
+      <title>{`${title} | ${name}`}</title>
       <meta name="description" content={description} />
       
       {/* 2. OpenGraph tags (For crisp Link Previews on WhatsApp, Facebook, LinkedIn) */}

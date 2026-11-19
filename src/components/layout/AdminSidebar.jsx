@@ -1,38 +1,31 @@
-// src/components/layout/AdminSidebar.jsx
-import React from 'react';
+import { CalendarDays, ChartNoAxesColumn, Images, LayoutDashboard, LogOut, Newspaper, UsersRound } from 'lucide-react';
 
-const NAV_ITEMS = [
-  { tab: 'news', label: 'News', icon: '📰' },
-  { tab: 'players', label: 'Squad', icon: '👥' },
-  { tab: 'fixtures', label: 'Fixtures', icon: '🏆' },
-  { tab: 'standings', label: 'Standings', icon: '📈' },
-  { tab: 'gallery', label: 'Gallery', icon: '🖼️' }
+const sections = [
+  ['overview', 'Overview', LayoutDashboard],
+  ['news', 'News', Newspaper],
+  ['fixtures', 'Fixtures', CalendarDays],
+  ['standings', 'Standings', ChartNoAxesColumn],
+  ['squad', 'Squad', UsersRound],
+  ['gallery', 'Gallery', Images]
 ];
 
-export default function AdminSidebar({ id, isOpen, isMobile, activeTab, onSelectSection }) {
-  const sidebarClassName = `admin-sidebar${isMobile ? (isOpen ? ' admin-sidebar--mobile-open' : ' admin-sidebar--mobile-closed') : ''}`;
-
+export default function AdminSidebar({ id, activeTab, onSelectSection, onLogout }) {
   return (
-    <aside id={id} className={sidebarClassName}>
-      <div className="admin-sidebar__header">
-        {/* Logo placeholder - using text for now, can be replaced with image */}
-        <div className="admin-sidebar__logo" aria-hidden="true">JU</div>
-        <div className="admin-sidebar__title">Junda Admin</div>
+    <aside id={id} className="club-admin-sidebar">
+      <div className="club-admin-brand">
+        <img src="/junda-logo.webp" width="42" height="42" alt="" />
+        <span>Junda United FC</span>
       </div>
-
-      <nav className="admin-sidebar__nav" aria-label="Admin navigation">
-        {NAV_ITEMS.map((item) => (
-          <button
-            key={item.tab}
-            type="button"
-            className={`admin-sidebar__item${activeTab === item.tab ? ' admin-sidebar__item--active' : ''}`}
-            onClick={() => onSelectSection(item.tab)}
-            aria-current={activeTab === item.tab ? 'page' : undefined}
-          >
-            <span className="admin-sidebar__item-icon" aria-hidden="true">{item.icon}</span>
-            <span>{item.label}</span>
+      <nav aria-label="Admin navigation">
+        {sections.map(([id, label, Icon]) => (
+          <button key={id} type="button" aria-current={activeTab === id ? 'page' : undefined}
+            aria-label={label} title={label} onClick={() => onSelectSection(id)}>
+            <Icon aria-hidden="true" size={20} /><span>{label}</span>
           </button>
         ))}
+        <button type="button" aria-label="Log out" title="Log out" onClick={onLogout}>
+          <LogOut aria-hidden="true" size={20} /><span>Log out</span>
+        </button>
       </nav>
     </aside>
   );
