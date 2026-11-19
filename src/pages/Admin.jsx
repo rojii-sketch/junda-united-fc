@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import RecordSearch from '../components/admin/RecordSearch';
 import AdminOverview from '../components/admin/AdminOverview';
 import AdminGalleryPreview from '../components/admin/AdminGalleryPreview';
+import AdminNewsPreview from '../components/admin/AdminNewsPreview';
 import Feedback from '../components/ui/Feedback';
 import DeleteDialog from '../components/ui/DeleteDialog';
 import { fixtureSchedule } from '../utils/fixtureInput';
@@ -209,7 +210,7 @@ export default function Admin({
 
   const startEditNews = (item) => {
     setEditingNewsId(item._id);
-    setNewsForm({ title: item.title, content: item.content, imageUrl: item.imageUrl || '', date: item.date });
+    setNewsForm({ title: item.title, content: item.content, imageUrl: item.imageUrl || '', date: item.date || '' });
     requestAnimationFrame(() => document.querySelector('.admin-form--editing input')?.focus());
   };
 
@@ -554,11 +555,12 @@ export default function Admin({
         {activeTab === 'news' && (
           <div className="admin-panel admin-panel--stacked">
             <form onSubmit={handleAddNews} className={`admin-form${editingNewsId ? ' admin-form--editing' : ''}`}>
-              <h3>{editingNewsId ? "📝 Edit Article" : "Post New Article"}</h3>
-              <div className="form-group"><label htmlFor="admin-news-title">Article Title</label><input id="admin-news-title" required type="text" placeholder="e.g. Match Victory!" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} /></div>
-              <div className="form-group"><label htmlFor="admin-news-image">Cover Image</label><input id="admin-news-image" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={isUploading} onChange={e => handleFileUpload(e, 'news')} /></div>
-              <div className="form-group"><label htmlFor="admin-news-date">Publish Date (Optional)</label><input id="admin-news-date" type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} /></div>
-              <div className="form-group"><label htmlFor="admin-news-content">Article Content</label><textarea id="admin-news-content" required placeholder="Write article text here..." rows="4" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea></div>
+              <h3>{editingNewsId ? "Edit article" : "Create article"}</h3>
+              <div className="form-group"><label htmlFor="admin-news-title">Article Title</label><input id="admin-news-title" required type="text" aria-describedby="admin-news-title-hint" value={newsForm.title} onChange={e => setNewsForm({...newsForm, title: e.target.value})} /><small id="admin-news-title-hint">Write a clear headline that tells readers what happened.</small></div>
+              <div className="form-group"><label htmlFor="admin-news-image">Cover image (optional)</label><input id="admin-news-image" aria-describedby="admin-news-image-hint" type="file" accept="image/jpeg,image/png,image/webp,image/gif" disabled={isUploading} onChange={e => handleFileUpload(e, 'news')} /><small id="admin-news-image-hint">Use a JPG, PNG, WebP or GIF up to 10 MB. A landscape photo works well in the news grid.</small></div>
+              <div className="form-group"><label htmlFor="admin-news-date">Publication date (optional)</label><input id="admin-news-date" aria-describedby="admin-news-date-hint" type="date" value={newsForm.date} onChange={e => setNewsForm({...newsForm, date: e.target.value})} /><small id="admin-news-date-hint">{editingNewsId ? 'Choose a date to change the saved publication date.' : 'A new article uses the current date if left blank.'}</small></div>
+              <div className="form-group"><label htmlFor="admin-news-content">Article Content</label><textarea id="admin-news-content" required aria-describedby="admin-news-content-hint" rows="8" value={newsForm.content} onChange={e => setNewsForm({...newsForm, content: e.target.value})}></textarea><small id="admin-news-content-hint">Leave a blank line between paragraphs.</small></div>
+              <AdminNewsPreview draft={newsForm} />
               <button type="submit" className="submit-btn" disabled={isSubmittingNews || isUploading}>{asyncButtonContent(isSubmittingNews, editingNewsId ? "Saving..." : "Publishing...", editingNewsId ? "Save Changes" : "Publish Post")}</button>
               {editingNewsId && (
                 <button type="button" className="cancel-btn" onClick={() => { setEditingNewsId(null); setNewsForm({ title: '', content: '', imageUrl: '', date: '' }); }}>Cancel Edit</button>

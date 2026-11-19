@@ -364,3 +364,17 @@
   margin: 0;
   border-radius: .5rem;
 }
+
+.admin-news-preview {
+  padding: .75rem;
+  border: 1px solid var(--club-line);
+  border-radius: .65rem;
+  background: #f7fafc;
+  color: var(--club-text);
+}
+.admin-news-preview summary { min-height: 44px; align-content: center; font-weight: 750; cursor: pointer; }
+.admin-news-preview__article { max-width: 65ch; min-width: 0; overflow-wrap: anywhere; }
+.admin-news-preview__article h4 { margin: .4rem 0 .7rem; font-size: clamp(1.25rem, 4vw, 2rem); }
+.admin-news-preview__article .news-image { width: min(100%, 28rem); border-radius: .55rem; }
+.admin-news-preview__article .news-image:not(.news-image--fallback) img { object-fit: contain; }
+.admin-news-preview__article p { white-space: pre-line; line-height: 1.6; }

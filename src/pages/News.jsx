@@ -1,276 +1,79 @@
-import React from 'react';
-import { Link2 } from 'lucide-react';
-import PublicHero from '../components/ui/PublicHero';
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SEO from '../components/SEO';
-import { motion } from 'framer-motion';
-import { fetchJson } from '../api';
-import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
+import NewsDate from '../components/news/NewsDate';
+import NewsImage from '../components/news/NewsImage';
+import NewsShare from '../components/news/NewsShare';
+import useNewsCollection from '../components/news/useNewsCollection';
+import { articlePath, newsExcerpt } from '../utils/newsEditorial';
+import './Editorial.css';
 
 export default function News() {
-  const [news, setNews] = React.useState([]);
-  const [status, setStatus] = React.useState('loading');
-  const [retryCount, setRetryCount] = React.useState(0);
-  const [shareStatus, setShareStatus] = React.useState('');
-
-  React.useEffect(() => {
-    const controller = new AbortController();
-
-    fetchJson('/news', controller.signal)
-      .then(data => {
-        setNews(data);
-        setStatus('success');
-      })
-      .catch(requestError => {
-        if (requestError.name === 'AbortError') return;
-        console.error('Error retrieving news:', requestError);
-        setStatus('error');
-      });
-
-    return () => controller.abort();
-  }, [retryCount]);
-
-  if (status === 'loading') {
-    return <PageMessage message="Loading the latest club news..." />;
-  }
-
-  if (status === 'error') {
-    return (
-      <PageMessage
-        message="Unable to load club news."
-        onRetry={() => {
-          setStatus('loading');
-          setRetryCount(count => count + 1);
-        }}
-      />
-    );
-  }
-
-  const handleShare = async (articleId, articleTitle) => {
-    const articleUrl = `${window.location.origin}/news/${articleId}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: articleTitle,
-          text: `Check out this update from Junda United FC!\n\n${articleTitle}`,
-          url: articleUrl,
-        });
-        return;
-      } catch (error) {
-        if (error.name === 'AbortError') return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(articleUrl);
-      setShareStatus('Story link copied.');
-    } catch {
-      setShareStatus('Could not copy the link. Open the story to share its address.');
-    }
-  };
-
-  if (news.length === 0) {
-    return (
-      <div className="public-ui public-news">
-        <SEO
-          title="News & Updates"
-          description="Latest match reports, club announcements, and squad news from Junda United FC."
-        />
-        <ClubWatermark />
-        <main className="public-container public-news__container">
-          <NewsHero />
-          <div className="public-news__empty public-glass">
-            <h2 className="public-news__empty-title">No news posted yet</h2>
-            <p>Check back later for match updates and official announcements from Junda United FC.</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  const featuredArticle = getFeaturedArticle(news);
-  const remainingArticles = news.filter(item => item._id !== featuredArticle._id);
+  const { articles, status, retry } = useNewsCollection();
+  const [featured, ...latest] = articles;
 
   return (
-    <div className="public-ui public-news">
-      <SEO
-        title="News & Updates"
-        description="Latest match reports, club announcements, and squad news from Junda United FC."
-      />
-      <ClubWatermark />
-
-      <main className="public-container public-news__container">
-        <NewsHero />
-        <p className="club-share-status" role="status">{shareStatus}</p>
-
-        <section className="public-news__featured-section" aria-labelledby="featured-story-heading">
-          <div className="public-news__section-label">
-            <span>Featured story</span>
+    <main className="editorial">
+      <SEO title="News & Updates" description="Match reports, club announcements, and stories from Junda United FC." />
+      <header className="editorial-masthead">
+        <div className="editorial-shell editorial-masthead__inner">
+          <div>
+            <p className="editorial-kicker">Junda United FC</p>
+            <h1>Club News</h1>
+            <p className="editorial-masthead__intro">Match reports, announcements and stories from the club.</p>
+            <Link to="/fixtures" className="editorial-masthead__link">Match Centre <ArrowRight size={18} aria-hidden="true" /></Link>
           </div>
-          <article className="public-news__featured public-glass">
-            <Link
-              to={`/news/${featuredArticle._id}`}
-              className="public-news__featured-link"
-            >
-              <ArticleImage
-                item={featuredArticle}
-                className="public-news__featured-media"
-                sizes="(max-width: 768px) calc(100vw - 2rem), 55vw"
-                widths={[480, 768, 1000]}
-                eager
-              />
-              <div className="public-news__featured-content">
-                <ArticleMeta item={featuredArticle} />
-                <h2 id="featured-story-heading" className="public-news__featured-title">
-                  {featuredArticle.title}
-                </h2>
-                <p className="public-news__featured-excerpt">
-                  {getExcerpt(featuredArticle.content, 220)}
-                </p>
-                <span className="public-news__read-more">Read story <span aria-hidden="true">→</span></span>
-              </div>
-            </Link>
-            <div className="public-news__featured-actions">
-              <button
-                type="button"
-                className="public-news__share"
-                onClick={() => handleShare(featuredArticle._id, featuredArticle.title)}
-              >
-                <Link2 size={18} aria-hidden="true" /> Share story
-              </button>
-            </div>
-          </article>
-        </section>
+          <img src="/junda-logo.webp" alt="" width="164" height="164" />
+        </div>
+      </header>
 
-        {remainingArticles.length > 0 && (
-          <section className="public-news__articles-section" aria-labelledby="more-stories-heading">
-            <div className="public-news__section-heading-row">
-              <div>
-                <span className="public-news__eyebrow">From the club</span>
-                <h2 id="more-stories-heading" className="public-news__section-heading">
-                  More stories
-                </h2>
-              </div>
-            </div>
-
-            <div className="public-news__grid">
-              {remainingArticles.map(item => (
-                <article className="public-news__card public-glass" key={item._id}>
-                  <Link to={`/news/${item._id}`} className="public-news__card-link">
-                    <ArticleImage
-                      item={item}
-                      className="public-news__card-media"
-                      sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1024px) calc((100vw - 3rem) / 2), 360px"
-                      widths={[320, 480, 640]}
-                    />
-                    <div className="public-news__card-content">
-                      <ArticleMeta item={item} />
-                      <h3 className="public-news__card-title">{item.title}</h3>
-                      <p className="public-news__card-excerpt">
-                        {getExcerpt(item.content, 120)}
-                      </p>
-                      <span className="public-news__read-more">Read story <span aria-hidden="true">→</span></span>
-                    </div>
-                  </Link>
-                  <div className="public-news__card-actions">
-                    <button
-                      type="button"
-                      className="public-news__share"
-                      onClick={() => handleShare(item._id, item.title)}
-                    >
-                      <Link2 size={18} aria-hidden="true" /> Share
-                    </button>
-                  </div>
-                </article>
-              ))}
+      <div className="editorial-shell editorial-feed" aria-busy={status === 'loading'}>
+        {status === 'loading' && <p className="editorial-state" role="status">Loading the latest club news…</p>}
+        {status === 'error' && (
+          <div className="editorial-state">
+            <p role="alert">Unable to load club news.</p>
+            <button className="editorial-action" type="button" onClick={retry}>Try again</button>
+          </div>
+        )}
+        {status === 'success' && !featured && (
+          <section className="editorial-state" aria-labelledby="news-empty">
+            <h2 id="news-empty">No news posted yet</h2>
+            <p>Check back for club announcements and match reports.</p>
+          </section>
+        )}
+        {featured && <StoryCard article={featured} featured />}
+        {latest.length > 0 && (
+          <section aria-labelledby="latest-news-heading">
+            <h2 id="latest-news-heading" className="editorial-section-heading">Latest news</h2>
+            <div className="editorial-grid">
+              {latest.map(article => <StoryCard key={article._id} article={article} />)}
             </div>
           </section>
         )}
-      </main>
-    </div>
-  );
-}
-
-function NewsHero() {
-  return <PublicHero home title="Junda United FC" description="Club news, match reports and announcements from the pride of Mishomoroni." />;
-}
-
-function getFeaturedArticle(articles) {
-  return articles.reduce((latest, article) => {
-    const latestDate = Date.parse(latest.date);
-    const articleDate = Date.parse(article.date);
-
-    if (Number.isNaN(articleDate)) return latest;
-    if (Number.isNaN(latestDate) || articleDate > latestDate) return article;
-    return latest;
-  }, articles[0]);
-}
-
-function getExcerpt(content, limit) {
-  if (typeof content !== 'string') return '';
-  return content.length > limit ? `${content.substring(0, limit)}...` : content;
-}
-
-function ArticleMeta({ item }) {
-  return (
-    <div className="public-news__meta">
-      <span>{item.date || 'Junda United FC'}</span>
-    </div>
-  );
-}
-
-function ArticleImage({ item, className, sizes, widths, eager = false }) {
-  const [failed, setFailed] = React.useState(false);
-  if (!item.imageUrl || failed) {
-    return (
-      <div className={`${className} public-news__media-placeholder`} aria-hidden="true">
-        <img src="/junda-logo.webp" alt="" width="96" height="96" />
-      </div>
-    );
-  }
-
-  return (
-    <div className={className}>
-      <img
-        src={transformCloudinaryUrl(item.imageUrl, `f_auto,q_auto,w_${widths[widths.length - 1]},c_limit`)}
-        srcSet={getCloudinarySrcSet(item.imageUrl, widths) || undefined}
-        sizes={sizes}
-        alt={item.title}
-        onError={() => setFailed(true)}
-        loading={eager ? 'eager' : 'lazy'}
-        decoding="async"
-      />
-    </div>
-  );
-}
-
-function ClubWatermark() {
-  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-  return (
-    <motion.div
-      className="public-news__watermark"
-      initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 0.1, scale: 1 }}
-      transition={prefersReducedMotion ? { duration: 0 } : { duration: 0.8, ease: 'easeOut' }}
-      aria-hidden="true"
-    />
-  );
-}
-
-function PageMessage({ message, onRetry }) {
-  return (
-    <main className="public-ui public-news public-news__status-page">
-      <div className="public-container">
-        <div className="public-news__status public-glass" role={onRetry ? 'alert' : 'status'}>
-          <h1>{message}</h1>
-          {onRetry && (
-            <button type="button" className="public-news__retry" onClick={onRetry}>
-              Try again
-            </button>
-          )}
-        </div>
       </div>
     </main>
+  );
+}
+
+function StoryCard({ article, featured = false }) {
+  const Heading = featured ? 'h2' : 'h3';
+  return (
+    <article className={`editorial-story${featured ? ' editorial-story--featured' : ''}`}>
+      <div className="editorial-story__visual">
+        <NewsImage url={article.imageUrl} variant={featured ? 'feature' : 'card'} />
+      </div>
+      <div className="editorial-story__body">
+        {featured && <p className="editorial-kicker">Featured story</p>}
+        <NewsDate value={article.date} />
+        <Heading><Link className="editorial-story__headline" to={articlePath(article._id)}>{article.title}</Link></Heading>
+        <p className="editorial-story__excerpt">{newsExcerpt(article.content, featured ? 220 : 130)}</p>
+        <div className="editorial-story__actions">
+          <span className="editorial-story__read" aria-hidden="true">
+            Read story <ArrowRight size={17} />
+          </span>
+          <NewsShare article={article} />
+        </div>
+      </div>
+    </article>
   );
 }

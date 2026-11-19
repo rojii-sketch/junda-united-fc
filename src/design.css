@@ -74,24 +74,16 @@
 .public-footer__contact a { color: #dcecff; }
 .public-footer__contact li { display: flex; align-items: center; gap: .5rem; overflow-wrap: anywhere; }
 .public-footer__contact svg { flex: none; color: #a5d3ff; }
-.public-ui:is(.public-news, .public-match-centre, .public-gallery, .public-squad, .public-article, .public-player-profile),
+.public-ui:is(.public-match-centre, .public-gallery, .public-squad, .public-player-profile),
 .club-not-found { background: radial-gradient(ellipse at 80% 0%, #163352, var(--club-night) 68%); }
-.public-ui .public-news__watermark, .public-ui .public-match-centre__watermark { display: none; }
+.public-ui .public-match-centre__watermark { display: none; }
 .public-ui :is(.public-glass, .public-match-centre__match-card, .public-match-centre__table-shell,
   .public-squad__player-card, .public-squad__staff-card, .public-player-profile__header, .public-player-profile__stat,
   .public-player-profile__bio) { background-color: #122a45; border-color: #34577b; border-radius: var(--club-radius); }
-.public-ui :is(.public-news__featured-title, .public-news__card-title, .public-article__header h1,
-  .public-player-profile__name-row h1, .public-match-centre__section-heading) {
+.public-ui :is(.public-player-profile__name-row h1, .public-match-centre__section-heading) {
   font-family: var(--club-heading); letter-spacing: -.035em; text-wrap: pretty; overflow-wrap: anywhere;
 }
-.public-ui .public-news__media-placeholder { background: repeating-linear-gradient(132deg, #17395b 0 20px, #13304d 20px 40px); }
-.public-ui .public-news__media-placeholder img { width: clamp(4rem, 14vw, 7rem); height: auto; object-fit: contain; }
-.club-share-status:empty { margin: 0; }
-.public-ui :is(.public-news__share, .public-article__share, .public-squad__view-button) { min-height: 44px; }
-.public-ui .public-article__body { max-width: 72ch; margin-inline: auto; }
-.public-ui .public-article__content { font-size: clamp(1.05rem, 1.9vw, 1.2rem); line-height: 1.8; overflow-wrap: anywhere; }
-.public-ui .public-article__content p { margin: 0 0 1em; }
-.public-ui .public-article__header { padding: clamp(1.25rem, 5vw, 3.2rem); border-inline-start: .3rem solid #61a7f0; }
+.public-ui .public-squad__view-button { min-height: 44px; }
 .public-ui .public-match-centre__table-scroll { scrollbar-color: #79b6f4 #102946; }
 .public-ui .public-match-centre__section-heading { text-transform: none; }
 .public-ui .club-form-key { color: #d2e6fb; line-height: 1.45; }

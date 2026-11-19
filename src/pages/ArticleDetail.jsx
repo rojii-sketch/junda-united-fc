@@ -1,211 +1,87 @@
-import { Link2 } from 'lucide-react';
-import { useParams, Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import { Link, useParams } from 'react-router-dom';
 import SEO from '../components/SEO';
-import { fetchJson } from '../api';
-import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
+import NewsDate from '../components/news/NewsDate';
+import NewsImage from '../components/news/NewsImage';
+import NewsShare from '../components/news/NewsShare';
+import useNewsCollection from '../components/news/useNewsCollection';
+import { articlePath, newsExcerpt, newsImageUrl, newsParagraphs, publicationDate, relatedNews } from '../utils/newsEditorial';
+import './Editorial.css';
+
+const officialSite = 'https://junda-united-fc.vercel.app';
+const defaultDescription = 'The latest news and updates from Junda United FC.';
 
 export default function ArticleDetail() {
   const { id } = useParams();
-  const [news, setNews] = useState([]);
-  const [status, setStatus] = useState('loading');
-  const [retryCount, setRetryCount] = useState(0);
-  const [shareStatus, setShareStatus] = useState('');
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetchJson('/news', controller.signal)
-      .then(data => {
-        setNews(data);
-        setStatus('success');
-      })
-      .catch(error => {
-        if (error.name === 'AbortError') return;
-        console.error('Error retrieving article:', error);
-        setStatus('error');
-      });
-
-    return () => controller.abort();
-  }, [retryCount]);
-
-  const article = news.find(item => item._id === id);
-
-  if (status === 'loading') {
-    return <DetailMessage message="Loading article..." />;
-  }
-
-  if (status === 'error') {
-    return (
-      <DetailMessage
-        message="Unable to load this article."
-        onRetry={() => {
-          setStatus('loading');
-          setRetryCount(count => count + 1);
-        }}
-      />
-    );
-  }
+  const { articles, status, retry } = useNewsCollection();
+  const article = articles.find(item => item._id === id);
 
   if (!article) {
+    const loading = status === 'loading';
+    const error = status === 'error';
+    const title = loading ? 'Loading article…' : error ? 'Unable to load this article.' : 'Article not found';
     return (
-      <div className="public-ui public-article">
-        <SEO
-          title="Article Not Found"
-          description="The requested Junda United FC news article could not be found."
-        />
-        <main className="public-container public-article__state-page">
-          <section className="public-article__state public-glass" aria-labelledby="article-not-found-heading">
-            <span className="public-article__eyebrow">Junda United FC News</span>
-            <h1 id="article-not-found-heading">Article not found</h1>
-            <p>The post you are looking for might have been removed by an administrator.</p>
-            <Link to="/" className="public-article__back-link">
-              Back to News Feed
-            </Link>
+      <main className="editorial">
+        <SEO title={title} description={defaultDescription} />
+        <div className="editorial-shell editorial-feed">
+          <section className="editorial-state" role={loading ? 'status' : error ? 'alert' : undefined}>
+            <h1>{title}</h1>
+            {!loading && <div className="editorial-share__actions">
+              {error && <button className="editorial-action" type="button" onClick={retry}>Try again</button>}
+              <BackToNews />
+            </div>}
           </section>
-        </main>
-      </div>
+        </div>
+      </main>
     );
   }
 
-  const description = getDescription(article.content);
-  const articleImage = article.imageUrl
-    ? transformCloudinaryUrl(article.imageUrl, 'f_auto,q_auto,w_1000,c_limit')
-    : undefined;
-  const dateTime = getDateTimeValue(article.date);
-
-  const handleShare = async () => {
-    const articleUrl = `${window.location.origin}/news/${article._id}`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: article.title,
-          text: `Check out this update from Junda United FC!\n\n${article.title}`,
-          url: articleUrl,
-        });
-        setShareStatus('Article shared.');
-        return;
-      } catch (error) {
-        if (error.name === 'AbortError') return;
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(articleUrl);
-      setShareStatus('Article link copied.');
-    } catch {
-      setShareStatus('Could not copy the link. Use the address bar or share on WhatsApp.');
-    }
-  };
+  const body = newsParagraphs(article.content);
+  const related = relatedNews(articles, article._id);
+  const canonical = new URL(articlePath(article._id), officialSite).href;
+  const image = newsImageUrl(article.imageUrl, officialSite) || `${officialSite}/junda-logo.webp`;
 
   return (
-    <div className="public-ui public-article">
-      <SEO
-        title={article.title}
-        description={description}
-        image={articleImage}
-        type="article"
-      />
-
-      <main className="public-container public-article__container">
-        <Link to="/" className="public-article__back-link">
-          <span aria-hidden="true">←</span> Back to Latest News
-        </Link>
-
-        <article className="public-article__article">
-          <header className="public-article__header public-glass">
-            <span className="public-article__eyebrow">Junda United FC News</span>
-            <div className="public-article__meta">
-              {dateTime ? (
-                <time dateTime={dateTime}>Published: {article.date}</time>
-              ) : (
-                <span>Published: {article.date}</span>
-              )}
-            </div>
+    <main className="editorial">
+      <SEO title={article.title} description={newsExcerpt(article.content, 160) || defaultDescription}
+        image={image} type="article" url={canonical} publishedTime={publicationDate(article.date).dateTime} />
+      <article>
+        <header className="editorial-article-header">
+          <div className="editorial-shell editorial-article-header__inner">
+            <BackToNews />
+            <p className="editorial-kicker">Junda United FC News</p>
             <h1>{article.title}</h1>
-          </header>
-
-          {article.imageUrl && (
-            <figure className="public-article__hero">
-              <img
-                src={articleImage}
-                srcSet={getCloudinarySrcSet(article.imageUrl, [480, 768, 1000]) || undefined}
-                sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1024px) calc(100vw - 3rem), 900px"
-                alt={article.title}
-                loading="eager"
-                decoding="async"
-              />
-            </figure>
-          )}
-
-          <div className="public-article__body">
-            <div className="public-article__content">{(article.content || '').split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div>
-            <div className="public-article__actions">
-              <button type="button" className="public-article__share" onClick={handleShare}>
-                <Link2 size={18} aria-hidden="true" /> Share article
-              </button>
-              <a className="public-article__share" target="_blank" rel="noopener noreferrer"
-                href={`https://wa.me/?text=${encodeURIComponent(article.title + '\n' + window.location.href)}`}>
-                Share on WhatsApp
-              </a>
-              {shareStatus && (
-                <span className="public-article__share-status" role="status">
-                  {shareStatus}
-                </span>
-              )}
-            </div>
+            <NewsDate value={article.date} />
           </div>
-        </article>
-      </main>
-    </div>
-  );
-}
+        </header>
+        <div className="editorial-shell editorial-article">
+          <figure className="editorial-article__hero">
+            <NewsImage url={article.imageUrl} alt={`Cover image for ${article.title}`} variant="article" />
+          </figure>
+          <div className="editorial-article__reading">
+            <div className="editorial-prose">{body.map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div>
+            <NewsShare article={article} full />
+          </div>
+        </div>
+      </article>
 
-function getDescription(content) {
-  if (typeof content !== 'string') return 'Latest news and updates from Junda United FC.';
-  const normalizedContent = content.replace(/\s+/g, ' ').trim();
-  return normalizedContent.length > 160
-    ? `${normalizedContent.slice(0, 157)}...`
-    : normalizedContent || 'Latest news and updates from Junda United FC.';
-}
-
-function getDateTimeValue(value) {
-  if (typeof value !== 'string' || !value.trim()) return null;
-
-  const trimmedValue = value.trim();
-  const dayMonthYear = trimmedValue.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-  if (dayMonthYear) {
-    const [, day, month, year] = dayMonthYear;
-    const date = new Date(Number(year), Number(month) - 1, Number(day));
-    if (
-      date.getFullYear() !== Number(year)
-      || date.getMonth() !== Number(month) - 1
-      || date.getDate() !== Number(day)
-    ) {
-      return null;
-    }
-    return date.toISOString().slice(0, 10);
-  }
-
-  const parsedTime = Date.parse(trimmedValue);
-  return Number.isNaN(parsedTime) ? null : new Date(parsedTime).toISOString();
-}
-
-function DetailMessage({ message, onRetry }) {
-  return (
-    <main className="public-ui public-article public-article__state-page">
-      <div className="public-container">
-        <section className="public-article__state public-glass" aria-live={onRetry ? 'assertive' : 'polite'}>
-          <span className="public-article__eyebrow">Junda United FC News</span>
-          <h1>{message}</h1>
-          {onRetry && (
-            <button type="button" className="public-article__retry" onClick={onRetry}>
-              Try again
-            </button>
-          )}
+      {related.length > 0 && (
+        <section className="editorial-shell editorial-related" aria-labelledby="related-news-heading">
+          <h2 id="related-news-heading" className="editorial-section-heading">More club news</h2>
+          <ul className="editorial-related__list">
+            {related.map(item => (
+              <li key={item._id}>
+                <NewsDate value={item.date} />
+                <h3><Link to={articlePath(item._id)}>{item.title}</Link></h3>
+              </li>
+            ))}
+          </ul>
         </section>
-      </div>
+      )}
     </main>
   );
+}
+
+function BackToNews() {
+  return <Link to="/" className="editorial-back"><ArrowLeft size={18} aria-hidden="true" /> Back to club news</Link>;
 }
