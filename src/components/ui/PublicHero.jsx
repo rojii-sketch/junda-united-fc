@@ -1,3 +1,4 @@
+import ClubCrest from './ClubCrest';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
@@ -10,7 +11,7 @@ export default function PublicHero({ title, description, className = '', home = 
         <p>{description}</p>
         {home && <Link to="/fixtures" className="club-public-action">Match Centre <ArrowRight size={18} aria-hidden="true" /></Link>}
       </div>
-      <img src="/junda-logo.webp" alt="" width="160" height="160" />
+      <ClubCrest width={160} />
     </header>
   );
 }

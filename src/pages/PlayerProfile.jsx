@@ -1,3 +1,4 @@
+import ClubCrest from '../components/ui/ClubCrest';
 import { ArrowLeft } from 'lucide-react';
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
@@ -102,14 +103,16 @@ export default function PlayerProfile() {
             animate={{ opacity: 1, x: 0 }}
             transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.5, ease: 'easeOut' }}
           >
-            <img
-              src={playerImage}
-              srcSet={getCloudinarySrcSet(player.image || player.imageUrl, [480, 768, 1200]) || undefined}
-              sizes="(max-width: 700px) calc(100vw - 2rem), (max-width: 1100px) 50vw, 550px"
-              alt={portrait ? player.name : ''}
-              loading="eager"
-              decoding="async"
-            />
+            {portrait ? (
+              <img
+                src={playerImage}
+                srcSet={getCloudinarySrcSet(player.image || player.imageUrl, [480, 768, 1200]) || undefined}
+                sizes="(max-width: 700px) calc(100vw - 2rem), (max-width: 1100px) 50vw, 550px"
+                alt={player.name}
+                loading="eager"
+                decoding="async"
+              />
+            ) : <ClubCrest width={550} />}
           </motion.figure>
 
           <motion.div

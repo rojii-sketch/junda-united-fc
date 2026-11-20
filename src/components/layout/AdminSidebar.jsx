@@ -1,3 +1,4 @@
+import ClubCrest from '../ui/ClubCrest';
 import { CalendarDays, ChartNoAxesColumn, Images, LayoutDashboard, LogOut, Newspaper, Settings2, UsersRound } from 'lucide-react';
 
 const sections = [
@@ -14,7 +15,7 @@ export default function AdminSidebar({ id, activeTab, onSelectSection, onLogout 
   return (
     <aside id={id} className="club-admin-sidebar">
       <div className="club-admin-brand">
-        <img src="/junda-logo.webp" width="42" height="42" alt="" />
+        <ClubCrest width={44} />
         <span>Junda United FC<small>Club administration</small></span>
       </div>
       <nav aria-label="Admin navigation">

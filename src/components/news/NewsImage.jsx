@@ -1,3 +1,4 @@
+import ClubCrest from '../ui/ClubCrest';
 import { useState } from 'react';
 import { galleryImageSources } from '../../utils/galleryMedia';
 import { newsImageUrl } from '../../utils/newsEditorial';
@@ -22,7 +23,7 @@ export default function NewsImage({ url, alt = '', variant = 'card' }) {
   return (
     <div className={`news-image news-image--${variant}${showFallback ? ' news-image--fallback' : ''}`}>
       {showFallback ? (
-        <img src="/junda-logo.webp" width="96" height="96" alt="" loading={lead ? 'eager' : 'lazy'} />
+        <ClubCrest width={96} loading={lead ? 'eager' : 'lazy'} />
       ) : (
         <img key={sources.src} {...sources} sizes={sources.srcSet ? sizes : undefined}
           alt={alt} loading={lead ? 'eager' : 'lazy'} fetchPriority={lead ? 'high' : undefined}

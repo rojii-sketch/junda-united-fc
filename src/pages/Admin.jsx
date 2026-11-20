@@ -1,3 +1,4 @@
+import ClubCrest from '../components/ui/ClubCrest';
 import { changeGalleryType, emptyGalleryDraft, galleryPayload, getGalleryUploadType, rememberGalleryUpload } from '../utils/galleryDraft';
 import { afterRecordDeletion } from '../components/ui/deleteFocus';
 // src/pages/Admin.jsx
@@ -429,7 +430,7 @@ export default function Admin({
         <SEO title="Club administration" description="Junda United FC administration sign-in." />
         <form onSubmit={handleLogin} className="admin-form">
           <Link to="/" className="club-admin-login__back">← Return to club website</Link>
-          <img src="/junda-logo.webp" width="72" height="72" alt="" />
+          <ClubCrest width={104} />
           <h1>Club administration</h1>
           <p>Sign in to manage the Junda United FC website.</p>
           <Feedback message={loginMessage} />

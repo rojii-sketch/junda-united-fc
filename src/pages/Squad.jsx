@@ -1,3 +1,4 @@
+import ClubCrest from '../components/ui/ClubCrest';
 import PublicHero from '../components/ui/PublicHero';
 import React from 'react';
 import { Link } from 'react-router-dom';
@@ -6,7 +7,6 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { fetchJson } from '../api';
 import { getCloudinarySrcSet, transformCloudinaryUrl } from '../utils/cloudinary';
 
-const placeholderImg = '/junda-logo.webp';
 
 function hasValue(value) {
   return value !== undefined && value !== null && value !== '';
@@ -77,14 +77,16 @@ function PlayerGrid({ roster, view }) {
         <Link to={`/squad/${player._id}`} className="public-squad__player-link" key={player._id}>
           <article className="public-squad__player-card">
             <div className="public-squad__player-media">
-              <img
-                src={transformCloudinaryUrl(player.image || placeholderImg, 'f_auto,q_auto,w_600,c_limit')}
-                srcSet={getCloudinarySrcSet(player.image, [320, 480, 640]) || undefined}
-                sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1024px) calc((100vw - 3rem) / 2), 360px"
-                alt={player.name}
-                loading="lazy"
-                decoding="async"
-              />
+              {player.image ? (
+                <img
+                  src={transformCloudinaryUrl(player.image, 'f_auto,q_auto,w_600,c_limit')}
+                  srcSet={getCloudinarySrcSet(player.image, [320, 480, 640]) || undefined}
+                  sizes="(max-width: 640px) calc(100vw - 2rem), (max-width: 1024px) calc((100vw - 3rem) / 2), 360px"
+                  alt={player.name}
+                  loading="lazy"
+                  decoding="async"
+                />
+              ) : <ClubCrest width={320} loading="lazy" />}
               <span className="public-squad__player-number">
                 {hasValue(player.jerseyNumber) ? player.jerseyNumber : '—'}
               </span>
@@ -122,14 +124,16 @@ function StaffGrid({ staff }) {
       {staff.map(member => (
         <article className="public-squad__staff-card public-glass" key={member._id}>
           <div className="public-squad__staff-media">
-            <img
-              src={transformCloudinaryUrl(member.image || placeholderImg, 'f_auto,q_auto,w_160,c_limit')}
-              srcSet={getCloudinarySrcSet(member.image, [80, 120, 160]) || undefined}
-              sizes="80px"
-              alt={member.name}
-              loading="lazy"
-              decoding="async"
-            />
+            {member.image ? (
+              <img
+                src={transformCloudinaryUrl(member.image, 'f_auto,q_auto,w_160,c_limit')}
+                srcSet={getCloudinarySrcSet(member.image, [80, 120, 160]) || undefined}
+                sizes="80px"
+                alt={member.name}
+                loading="lazy"
+                decoding="async"
+              />
+            ) : <ClubCrest width={80} loading="lazy" />}
           </div>
           <div className="public-squad__staff-content">
             <h3>{member.name}</h3>

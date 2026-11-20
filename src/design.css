@@ -67,13 +67,6 @@
 .club-public-hero img { justify-self: center; width: min(100%, 10rem); height: auto; filter: drop-shadow(0 8px 18px #05122660); }
 .club-public-action { display: inline-flex; align-items: center; gap: .55rem; min-height: 44px; padding: .6rem 1rem; border-radius: .5rem; color: var(--club-night); background: #d8ecff; font-weight: 800; text-decoration: none; }
 .club-public-action:hover { background: white; }
-.public-navbar.public-ui { background: var(--club-night); border-bottom: 1px solid #29547c; }
-.public-navbar__brand { color: #f0f7ff; text-decoration: none; }
-.public-navbar__link { min-height: 44px; align-content: center; }
-.public-footer { background: var(--club-night); border-top: 1px solid #29547c; }
-.public-footer__contact a { color: #dcecff; }
-.public-footer__contact li { display: flex; align-items: center; gap: .5rem; overflow-wrap: anywhere; }
-.public-footer__contact svg { flex: none; color: #a5d3ff; }
 .public-ui:is(.public-match-centre, .public-gallery, .public-squad, .public-player-profile),
 .club-not-found { background: radial-gradient(ellipse at 80% 0%, #163352, var(--club-night) 68%); }
 .public-ui .public-match-centre__watermark { display: none; }

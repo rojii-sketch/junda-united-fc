@@ -11,14 +11,14 @@ export default function FixturesPage() {
   const [standingsTables, setStandingsTables] = React.useState([]);
   const [fixturesStatus, setFixturesStatus] = React.useState('loading');
   const [standingsTablesStatus, setStandingsTablesStatus] = React.useState('loading');
-  const { hash } = useLocation();
+  const { hash, key } = useLocation();
   const standingsRef = React.useRef(null);
 
   React.useEffect(() => {
     if (hash !== '#standings') return;
     standingsRef.current?.focus({ preventScroll: true });
     standingsRef.current?.scrollIntoView();
-  }, [hash]);
+  }, [hash, key]);
   const [fixturesRetryCount, setFixturesRetryCount] = React.useState(0);
   const [standingsTablesRetryCount, setStandingsTablesRetryCount] = React.useState(0);
 

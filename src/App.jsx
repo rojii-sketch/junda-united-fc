@@ -11,6 +11,7 @@ import {
 import { AnimatePresence } from 'framer-motion';
 import { Analytics } from '@vercel/analytics/react';
 
+import './PublicChrome.css';
 import Navbar from './components/Navbar';
 import News from './pages/News';
 import Footer from './components/Footer';
@@ -56,7 +57,7 @@ function AppRoutes() {
       window.scrollTo(0, 0);
       publicContent.current?.focus({ preventScroll: true });
     }
-  }, [location.pathname, location.hash, navigationType]);
+  }, [location.pathname, location.hash, location.key, navigationType]);
 
   return (
     <>
@@ -98,9 +99,9 @@ function NotFound() {
 
 function RouteLoadingFallback() {
   return (
-    <div className="page-container" style={{ textAlign: 'center', marginTop: '5rem' }}>
+    <main className="page-container" style={{ textAlign: 'center', marginTop: '5rem' }}>
       <p role="status">Loading page…</p>
-    </div>
+    </main>
   );
 }
 

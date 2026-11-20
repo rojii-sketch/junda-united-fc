@@ -1,0 +1,178 @@
+.public-navbar,
+.public-footer {
+  --chrome-ink: #f1f7ff;
+  --chrome-muted: #c7d8ea;
+  --chrome-line: #345779;
+  --chrome-accent: #9ed2ff;
+  color: var(--chrome-ink);
+  background: #0a1c32;
+  overflow-wrap: anywhere;
+}
+
+.public-navbar {
+  border-bottom: 1px solid var(--chrome-line);
+  box-shadow: inset 0 3px #387dc4;
+}
+
+.public-navbar__inner,
+.public-footer__inner,
+.public-footer__bottom {
+  width: min(100% - clamp(1.5rem, 6vw, 4rem), 74rem);
+  margin-inline: auto;
+}
+
+.public-navbar__inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) fit-content(66%);
+  align-items: center;
+  gap: .55rem clamp(.7rem, 2vw, 2rem);
+  min-height: 4.65rem;
+  padding-block: .75rem;
+}
+
+.public-navbar__brand,
+.public-footer__identity {
+  display: flex;
+  align-items: center;
+  justify-self: start;
+  gap: .7rem;
+  min-width: 0;
+  min-height: 44px;
+  color: var(--chrome-ink);
+  text-decoration: none;
+  font: 850 clamp(1.05rem, 2.1vw, 1.42rem)/1.1 var(--club-heading);
+}
+
+.public-navbar__brand img,
+.public-footer__identity img {
+  display: block;
+  flex: none;
+  height: auto;
+  border-radius: .3rem;
+}
+
+.public-navbar__links {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: end;
+  gap: .25rem;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.public-navbar__link,
+.public-navbar__toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 44px;
+  padding: .55rem .72rem;
+  border-radius: .46rem;
+  color: var(--chrome-muted);
+  font: 700 .94rem/1.25 system-ui, sans-serif;
+  text-decoration: none;
+}
+
+.public-navbar__link:hover,
+.public-navbar__link[aria-current],
+.public-navbar__toggle:hover,
+.public-navbar__toggle[aria-expanded="true"] {
+  color: var(--chrome-ink);
+  background: #173653;
+}
+
+.public-navbar__link[aria-current]::after {
+  content: '';
+  position: absolute;
+  inset: auto .72rem .25rem;
+  border-bottom: 2px solid var(--chrome-accent);
+}
+
+.public-navbar__disclosure { display: contents; }
+
+.public-navbar__toggle {
+  background: #102b47;
+  border: 1px solid #6388ae;
+  cursor: pointer;
+}
+
+.public-navbar__toggle svg { flex: none; }
+
+.public-navbar__disclosure .public-navbar__links {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-top: .6rem;
+  margin-top: .15rem;
+  border-top: 1px solid var(--chrome-line);
+}
+
+.public-navbar__disclosure .public-navbar__link { width: 100%; }
+.public-navbar :focus-visible,
+.public-footer :focus-visible { outline: 3px solid var(--chrome-accent); outline-offset: 3px; }
+
+.public-footer { border-top: 1px solid var(--chrome-line); }
+
+.public-footer__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, .8fr) minmax(0, 1fr);
+  gap: clamp(1rem, 4vw, 3rem);
+  padding-block: clamp(1.4rem, 4vw, 2.7rem);
+}
+
+.public-footer__brand p {
+  max-width: 33ch;
+  margin: .8rem 0 0;
+  color: var(--chrome-muted);
+  line-height: 1.55;
+}
+
+.public-footer h2 {
+  margin: 0 0 .4rem;
+  color: var(--chrome-ink);
+  font: 800 1.1rem/1.25 var(--club-heading);
+}
+
+.public-footer ul { margin: 0; padding: 0; list-style: none; }
+.public-footer a { color: var(--chrome-ink); }
+.public-footer a:hover { text-decoration: underline; text-underline-offset: .18em; }
+.public-footer__links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 .55rem; }
+.public-footer__links a, .public-footer__contact a { display: inline-grid; align-content: center; min-height: 44px; }
+.public-footer__contact li { display: flex; align-items: center; gap: .55rem; min-height: 44px; color: var(--chrome-muted); }
+.public-footer__contact svg, .public-footer__social svg { flex: none; color: var(--chrome-accent); }
+
+.public-footer__social {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  min-height: 44px;
+  padding-inline: .55rem;
+  border: 1px solid #6388ae;
+  border-radius: .45rem;
+  text-decoration: none;
+}
+
+.public-footer__bottom {
+  padding-block: .85rem 1.05rem;
+  border-top: 1px solid var(--chrome-line);
+  color: var(--chrome-muted);
+  font-size: .88rem;
+}
+
+@media (max-width: 56rem) {
+  .public-navbar__inner { min-height: 4rem; grid-template-columns: minmax(0, 1fr) auto; }
+  .public-navbar__logo { width: clamp(3.35rem, 13vw, 5.5rem); }
+  .public-footer__inner { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .public-footer__brand { grid-column: 1 / -1; }
+}
+
+@media (max-width: 34rem) {
+  .public-navbar__logo { width: min(3.35rem, 19vw); }
+  .public-footer__inner { grid-template-columns: minmax(0, 1fr); }
+  .public-footer__brand { grid-column: auto; }
+  .public-footer__identity img { width: 5.5rem; }
+}

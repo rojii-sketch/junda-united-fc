@@ -1,3 +1,4 @@
+import ClubCrest from './ui/ClubCrest';
 import { rankTable as rankStandingsTeams } from '../utils/standingsRanking.js';
 
 const formLabels = { W: 'Win', D: 'Draw', L: 'Loss' };
@@ -85,7 +86,7 @@ export default function StandingsTable({
                   <td className={team.position <= 2 ? 'public-match-centre__position--top' : ''}>{team.position}</td>
                   <th scope="row">
                     <span className="public-match-centre__club-name">
-                      {isJunda && <img src="/junda-logo.webp" width="20" height="20" alt="" />}
+                      {isJunda && <ClubCrest width={24} />}
                       {teamName}
                     </span>
                   </th>

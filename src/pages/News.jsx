@@ -1,3 +1,4 @@
+import ClubCrest from '../components/ui/ClubCrest';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SEO from '../components/SEO';
@@ -23,7 +24,7 @@ export default function News() {
             <p className="editorial-masthead__intro">Match reports, announcements and stories from the club.</p>
             <Link to="/fixtures" className="editorial-masthead__link">Match Centre <ArrowRight size={18} aria-hidden="true" /></Link>
           </div>
-          <img src="/junda-logo.webp" alt="" width="164" height="164" />
+          <ClubCrest width={164} />
         </div>
       </header>
 
